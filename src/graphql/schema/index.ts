@@ -5,7 +5,6 @@ export const typeDefs = gql`
     userId: ID!
     username: String!
     email: String!
-    passwordHash: String!
     createdAt: String!
     lastLogin: String
     isActive: Boolean!
