@@ -4,6 +4,7 @@ import { Category } from '../../entities/Category'
 import { Product } from '../../entities/Product'
 import { Order } from '../../entities/Order'
 import { OrderItem } from '../../entities/OrderItem'
+import { AuthService } from '../../utils/auth/auth'
 
 export const resolvers = {
   Query: {
@@ -48,6 +49,107 @@ export const resolvers = {
         where: { orderId: parseInt(id) },
         relations: ['orderItems']
       })
+    },
+    me: async (_: any, __: any, context: any) => {
+      if (!context.user) {
+        return null
+      }
+      return context.user
+    }
+  },
+  Mutation: {
+    register: async (_: any, { input }: { input: { username: string; email: string; password: string } }) => {
+      try {
+        const userRepository = AppDataSource.getRepository(User)
+
+        const existingUser = await userRepository.findOne({
+          where: [
+            { username: input.username },
+            { email: input.email }
+          ]
+        })
+
+        if (existingUser) {
+          return {
+            success: false,
+            token: null,
+            user: null,
+            message: 'Username or email already exists'
+          }
+        }
+
+        const hashedPassword = await AuthService.hashPassword(input.password)
+
+        const user = userRepository.create({
+          username: input.username,
+          email: input.email,
+          passwordHash: hashedPassword
+        })
+
+        await userRepository.save(user)
+
+        const token = AuthService.generateToken({ userId: user.userId, username: user.username })
+
+        return {
+          success: true,
+          token,
+          user,
+          message: 'User registered successfully'
+        }
+      } catch (error) {
+        return {
+          success: false,
+          token: null,
+          user: null,
+          message: 'Registration failed'
+        }
+      }
+    },
+    login: async (_: any, { input }: { input: { username: string; password: string } }) => {
+      try {
+        const userRepository = AppDataSource.getRepository(User)
+
+        const user = await userRepository.findOne({
+          where: { username: input.username }
+        })
+
+        if (!user || !(await AuthService.verifyPassword(input.password, user.passwordHash))) {
+          return {
+            success: false,
+            token: null,
+            user: null,
+            message: 'Invalid username or password'
+          }
+        }
+
+        if (!user.isActive) {
+          return {
+            success: false,
+            token: null,
+            user: null,
+            message: 'Account is inactive'
+          }
+        }
+
+        user.lastLogin = new Date()
+        await userRepository.save(user)
+
+        const token = AuthService.generateToken({ userId: user.userId, username: user.username })
+
+        return {
+          success: true,
+          token,
+          user,
+          message: 'Login successful'
+        }
+      } catch (error) {
+        return {
+          success: false,
+          token: null,
+          user: null,
+          message: 'Login failed'
+        }
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ import { Category } from '../entities/Category'
 import { Product } from '../entities/Product'
 import { Order } from '../entities/Order'
 import { OrderItem } from '../entities/OrderItem'
+import { AuthService } from './auth/auth'
 
 export class DatabaseSeeder {
   private userRepository = AppDataSource.getRepository(User)
@@ -13,6 +14,8 @@ export class DatabaseSeeder {
   private orderItemRepository = AppDataSource.getRepository(OrderItem)
 
   async seed() {
+    await this.seedAdminUser()
+
     const existingCategories = await this.categoryRepository.count()
     if (existingCategories > 0) {
       return
@@ -43,6 +46,26 @@ export class DatabaseSeeder {
     ]
 
     await this.categoryRepository.save(categories)
+  }
+
+  private async seedAdminUser() {
+    const existingAdmin = await this.userRepository.findOne({
+      where: { username: 'admin' }
+    })
+
+    if (existingAdmin) {
+      return
+    }
+
+    const hashedPassword = await AuthService.hashPassword('123')
+
+    const adminUser = this.userRepository.create({
+      username: 'admin',
+      email: 'admin@myshop.com',
+      passwordHash: hashedPassword
+    })
+
+    await this.userRepository.save(adminUser)
   }
 
   private async seedProducts() {

@@ -33,6 +33,8 @@ DB_URL=postgresql://username:password@localhost:5432/database_name
 PORT=4000
 NODE_ENV=development
 LOG_LEVEL=info
+JWT_SECRET=your-super-secret-jwt-key-here
+JWT_EXPIRES_IN=7d
 ```
 
 ### Database Setup
@@ -58,6 +60,62 @@ The server will automatically:
 ## GraphQL API
 
 Once running, access GraphQL Playground at: `http://localhost:4000`
+
+### Authentication
+
+```graphql
+# Register new user
+mutation {
+  register(input: {
+    username: "johndoe"
+    email: "john@example.com"
+    password: "securepassword123"
+  }) {
+    success
+    token
+    user {
+      userId
+      username
+      email
+    }
+    message
+  }
+}
+
+# Login
+mutation {
+  login(input: {
+    username: "johndoe"
+    password: "securepassword123"
+  }) {
+    success
+    token
+    user {
+      userId
+      username
+      email
+      lastLogin
+    }
+    message
+  }
+}
+
+# Get current user (requires Authorization header)
+query {
+  me {
+    userId
+    username
+    email
+    createdAt
+    lastLogin
+  }
+}
+```
+
+**For authenticated requests, include the token in the Authorization header:**
+```
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+```
 
 ### Available Queries
 

@@ -52,6 +52,24 @@ export const typeDefs = gql`
     product: Product!
   }
 
+  type AuthResponse {
+    success: Boolean!
+    token: String
+    user: User
+    message: String!
+  }
+
+  input RegisterInput {
+    username: String!
+    email: String!
+    password: String!
+  }
+
+  input LoginInput {
+    username: String!
+    password: String!
+  }
+
   type Query {
     hello: String!
     users: [User!]!
@@ -62,5 +80,11 @@ export const typeDefs = gql`
     product(id: ID!): Product
     orders: [Order!]!
     order(id: ID!): Order
+    me: User
+  }
+
+  type Mutation {
+    register(input: RegisterInput!): AuthResponse!
+    login(input: LoginInput!): AuthResponse!
   }
 `
