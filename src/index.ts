@@ -62,6 +62,8 @@ async function startServer() {
     const server = new ApolloServer({
       typeDefs,
       resolvers,
+      introspection: true,
+      persistedQueries: false,
       plugins: [
         ApolloServerPluginLandingPageLocalDefault(),
         requestLoggerPlugin
