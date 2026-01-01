@@ -52,6 +52,35 @@ export const typeDefs = gql`
     product: Product!
   }
 
+  type PaginationInfo {
+    totalCount: Int!
+    currentPage: Int!
+    totalPages: Int!
+    limit: Int!
+    hasNextPage: Boolean!
+    hasPrevPage: Boolean!
+  }
+
+  type PaginatedUsers {
+    items: [User!]!
+    pagination: PaginationInfo!
+  }
+
+  type PaginatedCategories {
+    items: [Category!]!
+    pagination: PaginationInfo!
+  }
+
+  type PaginatedProducts {
+    items: [Product!]!
+    pagination: PaginationInfo!
+  }
+
+  type PaginatedOrders {
+    items: [Order!]!
+    pagination: PaginationInfo!
+  }
+
   type AuthResponse {
     success: Boolean!
     token: String
@@ -70,15 +99,21 @@ export const typeDefs = gql`
     password: String!
   }
 
+  input ListParams {
+    search: String
+    page: Int
+    limit: Int
+  }
+
   type Query {
     hello: String!
-    users: [User!]!
+    users(params: ListParams): PaginatedUsers!
     user(id: ID!): User
-    categories: [Category!]!
+    categories(params: ListParams): PaginatedCategories!
     category(id: ID!): Category
-    products: [Product!]!
+    products(params: ListParams): PaginatedProducts!
     product(id: ID!): Product
-    orders: [Order!]!
+    orders(params: ListParams): PaginatedOrders!
     order(id: ID!): Order
     me: User
   }

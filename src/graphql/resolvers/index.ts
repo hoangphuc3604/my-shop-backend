@@ -10,17 +10,71 @@ import { requireAuth, requirePermission, requireRole, optionalAuth } from '../..
 export const resolvers = {
   Query: {
     hello: optionalAuth()(() => 'Hello, World!'),
-    users: requirePermission(Permission.MANAGE_USERS)(async () => {
+    users: requirePermission(Permission.MANAGE_USERS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }) => {
       const userRepository = AppDataSource.getRepository(User)
-      return await userRepository.find()
+      const queryBuilder = userRepository.createQueryBuilder('user')
+
+      if (params?.search) {
+        queryBuilder.where('user.username LIKE :search OR user.email LIKE :search', { search: `%${params.search}%` })
+      }
+
+      const page = params?.page || 1
+      const limit = params?.limit || 10
+      const offset = (page - 1) * limit
+
+      const [items, totalCount] = await queryBuilder
+        .skip(offset)
+        .take(limit)
+        .getManyAndCount()
+
+      const totalPages = Math.ceil(totalCount / limit)
+
+      return {
+        items,
+        pagination: {
+          totalCount,
+          currentPage: page,
+          totalPages,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
     }),
     user: requirePermission(Permission.MANAGE_USERS)(async (_: any, { id }: { id: string }) => {
       const userRepository = AppDataSource.getRepository(User)
       return await userRepository.findOneBy({ userId: parseInt(id) })
     }),
-    categories: requirePermission(Permission.READ_CATEGORIES)(async () => {
+    categories: requirePermission(Permission.READ_CATEGORIES)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }) => {
       const categoryRepository = AppDataSource.getRepository(Category)
-      return await categoryRepository.find({ relations: ['products'] })
+      const queryBuilder = categoryRepository.createQueryBuilder('category').leftJoinAndSelect('category.products', 'products')
+
+      if (params?.search) {
+        queryBuilder.where('category.name LIKE :search OR category.description LIKE :search', { search: `%${params.search}%` })
+      }
+
+      const page = params?.page || 1
+      const limit = params?.limit || 10
+      const offset = (page - 1) * limit
+
+      const [items, totalCount] = await queryBuilder
+        .skip(offset)
+        .take(limit)
+        .getManyAndCount()
+
+      const totalPages = Math.ceil(totalCount / limit)
+
+      return {
+        items,
+        pagination: {
+          totalCount,
+          currentPage: page,
+          totalPages,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
     }),
     category: requirePermission(Permission.READ_CATEGORIES)(async (_: any, { id }: { id: string }) => {
       const categoryRepository = AppDataSource.getRepository(Category)
@@ -29,17 +83,44 @@ export const resolvers = {
         relations: ['products']
       })
     }),
-    products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, __: any, context: any) => {
+    products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }, context: any) => {
       const productRepository = AppDataSource.getRepository(Product)
-      const products = await productRepository.find({ relations: ['category', 'orderItems'] })
+      const queryBuilder = productRepository.createQueryBuilder('product')
+        .leftJoinAndSelect('product.category', 'category')
+        .leftJoinAndSelect('product.orderItems', 'orderItems')
 
-      if (context.user.role === UserRole.ADMIN) {
-        return products
-      } else {
-        return products.map(product => ({
-          ...product,
-          importPrice: null
-        }))
+      if (params?.search) {
+        queryBuilder.where('product.name LIKE :search OR product.sku LIKE :search OR product.description LIKE :search', { search: `%${params.search}%` })
+      }
+
+      const page = params?.page || 1
+      const limit = params?.limit || 10
+      const offset = (page - 1) * limit
+
+      const [items, totalCount] = await queryBuilder
+        .skip(offset)
+        .take(limit)
+        .getManyAndCount()
+
+      const totalPages = Math.ceil(totalCount / limit)
+
+      const processedItems = context.user.role === UserRole.ADMIN
+        ? items
+        : items.map(product => ({
+            ...product,
+            importPrice: null
+          }))
+
+      return {
+        items: processedItems,
+        pagination: {
+          totalCount,
+          currentPage: page,
+          totalPages,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
       }
     }),
     product: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { id }: { id: string }, context: any) => {
@@ -60,16 +141,42 @@ export const resolvers = {
         }
       }
     }),
-    orders: requirePermission(Permission.READ_ORDERS)(async (_: any, __: any, context: any) => {
+    orders: requirePermission(Permission.READ_ORDERS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }, context: any) => {
       const orderRepository = AppDataSource.getRepository(Order)
+      const queryBuilder = orderRepository.createQueryBuilder('order').leftJoinAndSelect('order.orderItems', 'orderItems')
 
-      if (context.user.role === UserRole.ADMIN) {
-        return await orderRepository.find({ relations: ['orderItems'] })
-      } else {
-        return await orderRepository.find({
-          where: { userId: context.user.userId },
-          relations: ['orderItems']
-        })
+      if (context.user.role !== UserRole.ADMIN) {
+        queryBuilder.where('order.userId = :userId', { userId: context.user.userId })
+      }
+
+      if (params?.search) {
+        const whereCondition = context.user.role === UserRole.ADMIN
+          ? 'order.status LIKE :search'
+          : 'order.status LIKE :search AND order.userId = :userId'
+        queryBuilder.andWhere(whereCondition, { search: `%${params.search}%`, userId: context.user.userId })
+      }
+
+      const page = params?.page || 1
+      const limit = params?.limit || 10
+      const offset = (page - 1) * limit
+
+      const [items, totalCount] = await queryBuilder
+        .skip(offset)
+        .take(limit)
+        .getManyAndCount()
+
+      const totalPages = Math.ceil(totalCount / limit)
+
+      return {
+        items,
+        pagination: {
+          totalCount,
+          currentPage: page,
+          totalPages,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
       }
     }),
     order: requirePermission(Permission.READ_ORDERS)(async (_: any, { id }: { id: string }, context: any) => {
