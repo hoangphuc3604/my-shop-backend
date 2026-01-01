@@ -8,6 +8,7 @@ import { DatabaseSeeder } from './utils/seeder'
 import { AuthService } from './utils/auth/auth'
 import { User } from './entities/User'
 import { ApolloServerPluginLandingPageLocalDefault } from 'apollo-server-core'
+import { formatError } from './utils/errors/ErrorFormatter'
 
 const PORT = process.env.PORT || 4000
 
@@ -64,6 +65,7 @@ async function startServer() {
       resolvers,
       introspection: true,
       persistedQueries: false,
+      formatError,
       plugins: [
         ApolloServerPluginLandingPageLocalDefault(),
         requestLoggerPlugin
@@ -81,8 +83,45 @@ async function startServer() {
 
     const { url } = await server.listen(PORT)
     logger.info(`Server ready at ${url}`)
+
+    const gracefulShutdown = async (signal: string) => {
+      logger.info(`Received ${signal}. Starting graceful shutdown...`)
+
+      try {
+        await server.stop()
+        logger.info('Apollo Server stopped')
+
+        if (AppDataSource.isInitialized) {
+          await AppDataSource.destroy()
+          logger.info('Database connection closed')
+        }
+
+        logger.info('Graceful shutdown completed')
+        process.exit(0)
+      } catch (error) {
+        logger.error('Error during graceful shutdown', error)
+        process.exit(1)
+      }
+    }
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught Exception', error)
+      gracefulShutdown('uncaughtException')
+    })
+
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('Unhandled Rejection at:', promise, 'reason:', reason)
+      gracefulShutdown('unhandledRejection')
+    })
+
   } catch (error) {
     logger.error('Failed to start server', error)
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy()
+    }
     process.exit(1)
   }
 }

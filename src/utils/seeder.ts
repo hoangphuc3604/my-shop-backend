@@ -1,10 +1,11 @@
 import { AppDataSource } from '../config/database'
-import { User } from '../entities/User'
+import { User, UserRole } from '../entities/User'
 import { Category } from '../entities/Category'
 import { Product } from '../entities/Product'
 import { Order } from '../entities/Order'
 import { OrderItem } from '../entities/OrderItem'
 import { AuthService } from './auth/auth'
+import { IsNull } from 'typeorm'
 
 export class DatabaseSeeder {
   private userRepository = AppDataSource.getRepository(User)
@@ -15,6 +16,7 @@ export class DatabaseSeeder {
 
   async seed() {
     await this.seedAdminUser()
+    await this.updateExistingUsers()
 
     const existingCategories = await this.categoryRepository.count()
     if (existingCategories > 0) {
@@ -62,10 +64,26 @@ export class DatabaseSeeder {
     const adminUser = this.userRepository.create({
       username: 'admin',
       email: 'admin@myshop.com',
-      passwordHash: hashedPassword
+      passwordHash: hashedPassword,
+      role: UserRole.ADMIN
     })
 
     await this.userRepository.save(adminUser)
+  }
+
+  private async updateExistingUsers() {
+    const existingUsers = await this.userRepository.find({
+      where: { role: IsNull() }
+    })
+
+    if (existingUsers.length === 0) {
+      return
+    }
+
+    for (const user of existingUsers) {
+      user.role = UserRole.SALE
+      await this.userRepository.save(user)
+    }
   }
 
   private async seedProducts() {
@@ -543,6 +561,7 @@ export class DatabaseSeeder {
 
       orders.push({
         orderId,
+        userId: 1,
         createdTime: createdDate,
         finalPrice: totalPrice,
         status: statuses[orderId - 1]

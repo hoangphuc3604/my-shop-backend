@@ -1,10 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm'
 import { OrderItem } from './OrderItem'
+import { User } from './User'
 
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn()
   orderId!: number
+
+  @Column({ type: 'int' })
+  userId!: number
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  user!: User
 
   @CreateDateColumn()
   createdTime!: Date

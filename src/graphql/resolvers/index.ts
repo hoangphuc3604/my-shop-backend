@@ -1,64 +1,101 @@
 import { AppDataSource } from '../../config/database'
-import { User } from '../../entities/User'
+import { User, Permission, UserRole } from '../../entities/User'
 import { Category } from '../../entities/Category'
 import { Product } from '../../entities/Product'
 import { Order } from '../../entities/Order'
 import { OrderItem } from '../../entities/OrderItem'
 import { AuthService } from '../../utils/auth/auth'
+import { requireAuth, requirePermission, requireRole, optionalAuth } from '../../middleware/authorization'
 
 export const resolvers = {
   Query: {
-    hello: () => 'Hello, World!',
-    users: async () => {
+    hello: optionalAuth()(() => 'Hello, World!'),
+    users: requirePermission(Permission.MANAGE_USERS)(async () => {
       const userRepository = AppDataSource.getRepository(User)
       return await userRepository.find()
-    },
-    user: async (_: any, { id }: { id: string }) => {
+    }),
+    user: requirePermission(Permission.MANAGE_USERS)(async (_: any, { id }: { id: string }) => {
       const userRepository = AppDataSource.getRepository(User)
       return await userRepository.findOneBy({ userId: parseInt(id) })
-    },
-    categories: async () => {
+    }),
+    categories: requirePermission(Permission.READ_CATEGORIES)(async () => {
       const categoryRepository = AppDataSource.getRepository(Category)
       return await categoryRepository.find({ relations: ['products'] })
-    },
-    category: async (_: any, { id }: { id: string }) => {
+    }),
+    category: requirePermission(Permission.READ_CATEGORIES)(async (_: any, { id }: { id: string }) => {
       const categoryRepository = AppDataSource.getRepository(Category)
       return await categoryRepository.findOne({
         where: { categoryId: parseInt(id) },
         relations: ['products']
       })
-    },
-    products: async () => {
+    }),
+    products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, __: any, context: any) => {
       const productRepository = AppDataSource.getRepository(Product)
-      return await productRepository.find({ relations: ['category', 'orderItems'] })
-    },
-    product: async (_: any, { id }: { id: string }) => {
+      const products = await productRepository.find({ relations: ['category', 'orderItems'] })
+
+      if (context.user.role === UserRole.ADMIN) {
+        return products
+      } else {
+        return products.map(product => ({
+          ...product,
+          importPrice: null
+        }))
+      }
+    }),
+    product: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { id }: { id: string }, context: any) => {
       const productRepository = AppDataSource.getRepository(Product)
-      return await productRepository.findOne({
+      const product = await productRepository.findOne({
         where: { productId: parseInt(id) },
         relations: ['category', 'orderItems']
       })
-    },
-    orders: async () => {
-      const orderRepository = AppDataSource.getRepository(Order)
-      return await orderRepository.find({ relations: ['orderItems'] })
-    },
-    order: async (_: any, { id }: { id: string }) => {
-      const orderRepository = AppDataSource.getRepository(Order)
-      return await orderRepository.findOne({
-        where: { orderId: parseInt(id) },
-        relations: ['orderItems']
-      })
-    },
-    me: async (_: any, __: any, context: any) => {
-      if (!context.user) {
-        return null
+
+      if (!product) return null
+
+      if (context.user.role === UserRole.ADMIN) {
+        return product
+      } else {
+        return {
+          ...product,
+          importPrice: null
+        }
       }
+    }),
+    orders: requirePermission(Permission.READ_ORDERS)(async (_: any, __: any, context: any) => {
+      const orderRepository = AppDataSource.getRepository(Order)
+
+      if (context.user.role === UserRole.ADMIN) {
+        return await orderRepository.find({ relations: ['orderItems'] })
+      } else {
+        return await orderRepository.find({
+          where: { userId: context.user.userId },
+          relations: ['orderItems']
+        })
+      }
+    }),
+    order: requirePermission(Permission.READ_ORDERS)(async (_: any, { id }: { id: string }, context: any) => {
+      const orderRepository = AppDataSource.getRepository(Order)
+
+      if (context.user.role === UserRole.ADMIN) {
+        return await orderRepository.findOne({
+          where: { orderId: parseInt(id) },
+          relations: ['orderItems']
+        })
+      } else {
+        return await orderRepository.findOne({
+          where: {
+            orderId: parseInt(id),
+            userId: context.user.userId
+          },
+          relations: ['orderItems']
+        })
+      }
+    }),
+    me: requireAuth()(async (_: any, __: any, context: any) => {
       return context.user
-    }
+    })
   },
   Mutation: {
-    register: async (_: any, { input }: { input: { username: string; email: string; password: string } }) => {
+    register: optionalAuth()(async (_: any, { input }: { input: { username: string; email: string; password: string } }) => {
       try {
         const userRepository = AppDataSource.getRepository(User)
 
@@ -83,12 +120,13 @@ export const resolvers = {
         const user = userRepository.create({
           username: input.username,
           email: input.email,
-          passwordHash: hashedPassword
+          passwordHash: hashedPassword,
+          role: UserRole.SALE
         })
 
         await userRepository.save(user)
 
-        const token = AuthService.generateToken({ userId: user.userId, username: user.username })
+        const token = AuthService.generateToken({ userId: user.userId, username: user.username, role: user.role })
 
         return {
           success: true,
@@ -104,8 +142,8 @@ export const resolvers = {
           message: 'Registration failed'
         }
       }
-    },
-    login: async (_: any, { input }: { input: { username: string; password: string } }) => {
+    }),
+    login: optionalAuth()(async (_: any, { input }: { input: { username: string; password: string } }) => {
       try {
         const userRepository = AppDataSource.getRepository(User)
 
@@ -134,7 +172,11 @@ export const resolvers = {
         user.lastLogin = new Date()
         await userRepository.save(user)
 
-        const token = AuthService.generateToken({ userId: user.userId, username: user.username })
+        const token = AuthService.generateToken({
+          userId: user.userId,
+          username: user.username,
+          role: user.role
+        })
 
         return {
           success: true,
@@ -150,6 +192,6 @@ export const resolvers = {
           message: 'Login failed'
         }
       }
-    }
+    })
   }
 }

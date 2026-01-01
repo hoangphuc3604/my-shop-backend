@@ -5,6 +5,7 @@ export const typeDefs = gql`
     userId: ID!
     username: String!
     email: String!
+    role: String!
     createdAt: String!
     lastLogin: String
     isActive: Boolean!
@@ -21,7 +22,7 @@ export const typeDefs = gql`
     productId: ID!
     sku: String!
     name: String!
-    importPrice: Int!
+    importPrice: Int
     count: Int!
     description: String!
     imageUrl1: String!
