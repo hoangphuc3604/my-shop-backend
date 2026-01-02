@@ -141,9 +141,11 @@ export const resolvers = {
         }
       }
     }),
-    orders: requirePermission(Permission.READ_ORDERS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }, context: any) => {
+    orders: requirePermission(Permission.READ_ORDERS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; startDate?: string; endDate?: string } }, context: any) => {
       const orderRepository = AppDataSource.getRepository(Order)
-      const queryBuilder = orderRepository.createQueryBuilder('order').leftJoinAndSelect('order.orderItems', 'orderItems')
+      const queryBuilder = orderRepository.createQueryBuilder('order')
+        .leftJoinAndSelect('order.orderItems', 'orderItems')
+        .leftJoinAndSelect('orderItems.product', 'product')
 
       if (context.user.role !== UserRole.ADMIN) {
         queryBuilder.where('order.userId = :userId', { userId: context.user.userId })
@@ -154,6 +156,14 @@ export const resolvers = {
           ? 'order.status LIKE :search'
           : 'order.status LIKE :search AND order.userId = :userId'
         queryBuilder.andWhere(whereCondition, { search: `%${params.search}%`, userId: context.user.userId })
+      }
+
+      if (params?.startDate) {
+        queryBuilder.andWhere('DATE(order.createdTime) >= :startDate', { startDate: params.startDate })
+      }
+
+      if (params?.endDate) {
+        queryBuilder.andWhere('DATE(order.createdTime) <= :endDate', { endDate: params.endDate })
       }
 
       const page = params?.page || 1
@@ -185,7 +195,7 @@ export const resolvers = {
       if (context.user.role === UserRole.ADMIN) {
         return await orderRepository.findOne({
           where: { orderId: parseInt(id) },
-          relations: ['orderItems']
+          relations: ['orderItems', 'orderItems.product']
         })
       } else {
         return await orderRepository.findOne({
@@ -193,7 +203,7 @@ export const resolvers = {
             orderId: parseInt(id),
             userId: context.user.userId
           },
-          relations: ['orderItems']
+          relations: ['orderItems', 'orderItems.product']
         })
       }
     }),
@@ -300,5 +310,10 @@ export const resolvers = {
         }
       }
     })
+  },
+  Order: {
+    createdTime: (order: Order) => {
+      return order.createdTime.toISOString()
+    }
   }
 }

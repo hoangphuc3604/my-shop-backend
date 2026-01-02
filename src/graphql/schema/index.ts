@@ -103,6 +103,10 @@ export const typeDefs = gql`
     search: String
     page: Int
     limit: Int
+    "Date format: YYYY-MM-DD (e.g., 2024-01-15)"
+    startDate: String
+    "Date format: YYYY-MM-DD (e.g., 2024-12-31)"
+    endDate: String
   }
 
   type Query {
