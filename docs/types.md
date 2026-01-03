@@ -106,10 +106,8 @@ type Product {
   name: String!
   importPrice: Int
   count: Int!
-  description: String!
-  imageUrl1: String!
-  imageUrl2: String!
-  imageUrl3: String!
+  description: String
+  images: [ProductImage!]!
   categoryId: Int!
   category: Category!
   orderItems: [OrderItem!]!
@@ -123,10 +121,8 @@ type Product {
 | name | String! | ✅ | Tên sản phẩm |
 | importPrice | Int | ❌ | Giá nhập (chỉ Admin thấy) |
 | count | Int! | ✅ | Số lượng tồn kho |
-| description | String! | ✅ | Mô tả sản phẩm |
-| imageUrl1 | String! | ✅ | URL ảnh 1 |
-| imageUrl2 | String! | ✅ | URL ảnh 2 |
-| imageUrl3 | String! | ✅ | URL ảnh 3 |
+| description | String | ❌ | Mô tả sản phẩm |
+| images | [ProductImage!]! | ✅ | Danh sách ảnh (url, altText, position, isPrimary) |
 | categoryId | Int! | ✅ | ID danh mục |
 | category | Category! | ✅ | Thông tin danh mục |
 | orderItems | [OrderItem!]! | ✅ | Danh sách items trong đơn hàng |

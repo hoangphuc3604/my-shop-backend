@@ -185,9 +185,12 @@ query GetProductDetails($productId: ID!) {
     importPrice
     count
     description
-    imageUrl1
-    imageUrl2
-    imageUrl3
+    images {
+      url
+      altText
+      position
+      isPrimary
+    }
     category {
       categoryId
       name
@@ -616,9 +619,12 @@ query GetAllProductData {
       importPrice
       count
       description
-      imageUrl1
-      imageUrl2
-      imageUrl3
+      images {
+        url
+        altText
+        position
+        isPrimary
+      }
       category {
         categoryId
         name

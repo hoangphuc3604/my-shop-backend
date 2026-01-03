@@ -22,7 +22,8 @@ export class Product {
   count!: number
 
   @Column({ length: 1000 })
-  description!: string
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  description?: string | null
   @OneToMany(() => ProductImage, image => image.product, { cascade: true })
   images!: ProductImage[]
 

@@ -231,9 +231,12 @@ query GetProducts($params: ProductListParams) {
       importPrice
       count
       description
-      imageUrl1
-      imageUrl2
-      imageUrl3
+      images {
+        url
+        altText
+        position
+        isPrimary
+      }
       category {
         categoryId
         name
@@ -289,9 +292,12 @@ query GetProduct($id: ID!) {
     importPrice  # Chỉ Admin mới thấy
     count
     description
-    imageUrl1
-    imageUrl2
-    imageUrl3
+    images {
+      url
+      altText
+      position
+      isPrimary
+    }
     category {
       categoryId
       name

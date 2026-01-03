@@ -24,7 +24,7 @@ export const typeDefs = gql`
     name: String!
     importPrice: Int
     count: Int!
-    description: String!
+    description: String
     images: [ProductImage!]!
     categoryId: Int!
     category: Category!
@@ -179,7 +179,7 @@ export const typeDefs = gql`
     name: String!
     importPrice: Int!
     count: Int!
-    description: String!
+    description: String
     images: [ImageInput!]!
     categoryId: Int!
   }
