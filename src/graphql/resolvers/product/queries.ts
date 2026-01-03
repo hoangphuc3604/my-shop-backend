@@ -1,7 +1,10 @@
 import { AppDataSource } from '../../../config/database'
 import { Product } from '../../../entities/Product'
+import { Category } from '../../../entities/Category'
 import { UserRole, Permission } from '../../../entities/User'
 import { requirePermission } from '../../../middleware/authorization'
+import { ExcelTemplateGenerator } from '../../../utils/excelTemplate'
+import { logger } from '../../../config/logger'
 
 export const productQueries = {
   products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; sortBy?: 'NAME' | 'IMPORT_PRICE' | 'COUNT' | 'CREATED_AT' | 'PRODUCT_ID'; sortOrder?: 'ASC' | 'DESC'; minPrice?: number; maxPrice?: number } }, context: any) => {
@@ -90,6 +93,35 @@ export const productQueries = {
         ...product,
         importPrice: null
       }
+    }
+  }),
+
+  /**
+   * Returns an Excel template file for bulk product import with instructions and validation hints
+   * @param _ - Parent object (unused)
+   * @param args - Query arguments (unused)
+   * @param context - GraphQL context with user info
+   * @returns Template file as base64 with filename and mime type
+   */
+  productTemplate: requirePermission(Permission.MANAGE_PRODUCTS)(async (_: any, args: any, context: any) => {
+    logger.info(`Generating product template for user: ${context.user.username}`)
+
+    try {
+      const categoryRepository = AppDataSource.getRepository(Category)
+      const categories = await categoryRepository.find({
+        select: ['categoryId', 'name', 'description']
+      })
+
+      logger.info(`Found ${categories.length} categories for template dropdown`)
+
+      const templateResult = await ExcelTemplateGenerator.generateProductTemplate(categories)
+
+      logger.info(`Successfully generated product template (${templateResult.filename})`)
+
+      return templateResult
+    } catch (error) {
+      logger.error(`Failed to generate product template: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error('Failed to generate product template')
     }
   })
 }

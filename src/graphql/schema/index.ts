@@ -212,6 +212,25 @@ export const typeDefs = gql`
     orders(params: ListParams): PaginatedOrders!
     order(id: ID!): Order
     me: User
+    productTemplate: TemplateFileResult!
+  }
+
+  type BulkUploadResult {
+    createdCount: Int!
+    failedCount: Int!
+    errors: [BulkRowError!]!
+  }
+
+  type BulkRowError {
+    row: Int!
+    message: String!
+    field: String
+  }
+
+  type TemplateFileResult {
+    fileBase64: String!
+    filename: String!
+    mimeType: String!
   }
 
   type Mutation {
@@ -223,5 +242,6 @@ export const typeDefs = gql`
     createProduct(input: CreateProductInput!): Product!
     updateProduct(id: ID!, input: UpdateProductInput!): Product!
     deleteProduct(id: ID!): Boolean!
+    bulkCreateProducts(fileBase64: String!): BulkUploadResult!
   }
 `

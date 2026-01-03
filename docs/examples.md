@@ -200,6 +200,105 @@ query GetProductDetails($productId: ID!) {
 }
 ```
 
+### Tải Template Excel Để Import Sản Phẩm
+```graphql
+query GetProductTemplate {
+  productTemplate {
+    fileBase64
+    filename
+    mimeType
+  }
+}
+```
+
+**Mô tả:**
+- Trả về file template Excel (.xlsx) với hướng dẫn đầy đủ bằng tiếng Anh
+- File có data validation, dropdown cho categoryId, và comments cho từng cột
+- Chỉ user có quyền `MANAGE_PRODUCTS` mới có thể truy cập
+
+**Cách sử dụng trên client:**
+```javascript
+// GraphQL query
+const query = `
+  query GetProductTemplate {
+    productTemplate {
+      fileBase64
+      filename
+      mimeType
+    }
+  }
+`;
+
+// Decode base64 và save file
+const response = await fetch('/graphql', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({ query })
+});
+
+const { data } = await response.json();
+const { fileBase64, filename, mimeType } = data.productTemplate;
+
+// Convert base64 to blob and download
+const byteCharacters = atob(fileBase64);
+const byteNumbers = new Array(byteCharacters.length);
+for (let i = 0; i < byteCharacters.length; i++) {
+  byteNumbers[i] = byteCharacters.charCodeAt(i);
+}
+const byteArray = new Uint8Array(byteNumbers);
+const blob = new Blob([byteArray], { type: mimeType });
+
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = filename;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+```
+
+### Import Sản Phẩm Hàng Loạt Từ Excel
+```graphql
+mutation BulkCreateProducts {
+  bulkCreateProducts(fileBase64: "UEsDBBQAAAAIAG1Xa1YAAAAAAAAAAAAAAAALAAAAeGwt...") {
+    createdCount
+    failedCount
+    errors {
+      row
+      message
+      field
+    }
+  }
+}
+```
+
+**Cách tạo file Excel:**
+1. Tải template bằng query `productTemplate`
+2. Điền dữ liệu sản phẩm theo hướng dẫn trong sheet "Instructions"
+3. Sử dụng dropdown cho categoryId và tuân thủ validation rules
+4. Convert file sang base64 (có thể dùng online tools hoặc code)
+5. Gửi qua mutation
+
+**Ví dụ cấu trúc file Excel (theo template):**
+```
+sku,name,description,price,categoryId,stock,images
+PROD001,"Cotton T-Shirt","High-quality cotton t-shirt",150000,1,50,"https://example.com/image1.jpg,https://example.com/image2.jpg"
+PROD002,"Slim Fit Jeans","Premium slim fit jeans for women",350000,2,30,"https://example.com/image3.jpg"
+```
+
+**Lưu ý validation (theo template):**
+- `sku`: Optional. Max 50 chars. Allowed: letters, numbers, hyphen, underscore.
+- `name`: Required. Product name. Max 200 chars.
+- `description`: Optional. Max 1000 chars.
+- `price`: Required. Number > 0.
+- `categoryId`: Required. Choose from dropdown list (auto-populated from database).
+- `stock`: Optional. Integer >= 0 (default 0).
+- `images`: Optional. Comma-separated URLs (https:// format recommended).
+
 ### Lấy Danh Sách Danh Mục
 ```graphql
 query GetCategoriesWithProducts {
