@@ -90,14 +90,43 @@ export const resolvers = {
         relations: ['products']
       })
     }),
-    products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }, context: any) => {
+    products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; sortBy?: 'NAME' | 'IMPORT_PRICE' | 'COUNT' | 'CREATED_AT' | 'PRODUCT_ID'; sortOrder?: 'ASC' | 'DESC'; minPrice?: number; maxPrice?: number } }, context: any) => {
       const productRepository = AppDataSource.getRepository(Product)
       const queryBuilder = productRepository.createQueryBuilder('product')
         .leftJoinAndSelect('product.category', 'category')
         .leftJoinAndSelect('product.orderItems', 'orderItems')
 
+      // Search filter
       if (params?.search) {
         queryBuilder.where('product.name LIKE :search OR product.sku LIKE :search OR product.description LIKE :search', { search: `%${params.search}%` })
+      }
+
+      // Price range filter
+      if (params?.minPrice !== undefined) {
+        queryBuilder.andWhere('product.importPrice >= :minPrice', { minPrice: params.minPrice })
+      }
+      if (params?.maxPrice !== undefined) {
+        queryBuilder.andWhere('product.importPrice <= :maxPrice', { maxPrice: params.maxPrice })
+      }
+
+      // Sorting
+      const sortFieldMap: { [key: string]: string } = {
+        'NAME': 'name',
+        'IMPORT_PRICE': 'importPrice',
+        'COUNT': 'count',
+        'CREATED_AT': 'createdAt',
+        'PRODUCT_ID': 'productId'
+      }
+
+      if (params?.sortBy) {
+        const dbField = sortFieldMap[params.sortBy]
+        if (dbField) {
+          const sortOrder = params.sortOrder === 'DESC' ? 'DESC' : 'ASC'
+          queryBuilder.orderBy(`product.${dbField}`, sortOrder)
+        }
+      } else {
+        // Default sort by productId DESC (newest first)
+        queryBuilder.orderBy('product.productId', 'DESC')
       }
 
       const page = params?.page || 1

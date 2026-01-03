@@ -90,6 +90,26 @@ export const typeDefs = gql`
     Cancelled
   }
 
+  enum ProductSortBy {
+    "Sắp xếp theo tên sản phẩm"
+    NAME
+    "Sắp xếp theo giá nhập"
+    IMPORT_PRICE
+    "Sắp xếp theo số lượng tồn kho"
+    COUNT
+    "Sắp xếp theo ngày tạo"
+    CREATED_AT
+    "Sắp xếp theo ID sản phẩm"
+    PRODUCT_ID
+  }
+
+  enum SortOrder {
+    "Sắp xếp tăng dần (A-Z, 1-9)"
+    ASC
+    "Sắp xếp giảm dần (Z-A, 9-1)"
+    DESC
+  }
+
   type AuthResponse {
     success: Boolean!
     token: String
@@ -118,6 +138,23 @@ export const typeDefs = gql`
     endDate: String
   }
 
+  input ProductListParams {
+    "Từ khóa tìm kiếm trong tên, SKU hoặc mô tả sản phẩm"
+    search: String
+    "Trang hiện tại (bắt đầu từ 1)"
+    page: Int
+    "Số sản phẩm trên mỗi trang (mặc định: 10)"
+    limit: Int
+    "Tiêu chí sắp xếp"
+    sortBy: ProductSortBy
+    "Thứ tự sắp xếp"
+    sortOrder: SortOrder
+    "Giá tối thiểu (VNĐ)"
+    minPrice: Int
+    "Giá tối đa (VNĐ)"
+    maxPrice: Int
+  }
+
   input OrderItemInput {
     productId: Int!
     quantity: Int!
@@ -137,7 +174,7 @@ export const typeDefs = gql`
     user(id: ID!): User
     categories(params: ListParams): PaginatedCategories!
     category(id: ID!): Category
-    products(params: ListParams): PaginatedProducts!
+    products(params: ProductListParams): PaginatedProducts!
     product(id: ID!): Product
     orders(params: ListParams): PaginatedOrders!
     order(id: ID!): Order
