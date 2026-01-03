@@ -37,7 +37,7 @@ export const typeDefs = gql`
     orderId: ID!
     createdTime: String!
     finalPrice: Int!
-    status: String!
+    status: OrderStatus!
     orderItems: [OrderItem!]!
   }
 
@@ -81,6 +81,15 @@ export const typeDefs = gql`
     pagination: PaginationInfo!
   }
 
+  enum OrderStatus {
+    "Order has been created and is waiting for payment"
+    Created
+    "Order has been paid"
+    Paid
+    "Order has been cancelled"
+    Cancelled
+  }
+
   type AuthResponse {
     success: Boolean!
     token: String
@@ -109,6 +118,19 @@ export const typeDefs = gql`
     endDate: String
   }
 
+  input OrderItemInput {
+    productId: Int!
+    quantity: Int!
+  }
+
+  input CreateOrderInput {
+    orderItems: [OrderItemInput!]!
+  }
+
+  input UpdateOrderInput {
+    status: OrderStatus!
+  }
+
   type Query {
     hello: String!
     users(params: ListParams): PaginatedUsers!
@@ -125,5 +147,8 @@ export const typeDefs = gql`
   type Mutation {
     register(input: RegisterInput!): AuthResponse!
     login(input: LoginInput!): AuthResponse!
+    addOrder(input: CreateOrderInput!): Order!
+    updateOrder(id: ID!, input: UpdateOrderInput!): Order!
+    deleteOrder(id: ID!): Boolean!
   }
 `

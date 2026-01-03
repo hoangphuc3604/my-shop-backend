@@ -6,6 +6,13 @@ import { Order } from '../../entities/Order'
 import { OrderItem } from '../../entities/OrderItem'
 import { AuthService } from '../../utils/auth/auth'
 import { requireAuth, requirePermission, requireRole, optionalAuth } from '../../middleware/authorization'
+import { ValidationError, NotFoundError, PermissionError, BadRequestError } from '../../utils/errors/CustomErrors'
+
+enum OrderStatus {
+  Created = 'Created',
+  Paid = 'Paid',
+  Cancelled = 'Cancelled'
+}
 
 export const resolvers = {
   Query: {
@@ -309,6 +316,151 @@ export const resolvers = {
           message: 'Login failed'
         }
       }
+    }),
+    addOrder: requireAuth()(async (_: any, { input }: { input: { orderItems: Array<{ productId: number; quantity: number }> } }, context: any) => {
+      if (context.user.role !== UserRole.ADMIN) {
+        throw new PermissionError('Only admin can create orders')
+      }
+
+      const orderRepository = AppDataSource.getRepository(Order)
+      const orderItemRepository = AppDataSource.getRepository(OrderItem)
+      const productRepository = AppDataSource.getRepository(Product)
+
+      const targetUserId = context.user.userId
+
+      const productIds = input.orderItems.map(item => item.productId)
+      const products = await productRepository.findByIds(productIds)
+
+      if (products.length !== productIds.length) {
+        throw new ValidationError('Some products not found')
+      }
+
+      const productMap = new Map(products.map(p => [p.productId, p]))
+
+      let totalPrice = 0
+      const orderItems: Partial<OrderItem>[] = []
+
+      for (const item of input.orderItems) {
+        const product = productMap.get(item.productId)
+        if (!product) {
+          throw new NotFoundError('Product')
+        }
+
+        if (item.quantity <= 0) {
+          throw new ValidationError('Quantity must be greater than 0', 'quantity')
+        }
+
+        if (item.quantity > product.count) {
+          throw new ValidationError(`Insufficient stock for product ${product.name}. Available: ${product.count}`)
+        }
+
+        const unitPrice = product.importPrice
+        const itemTotal = Math.round(unitPrice * item.quantity)
+
+        orderItems.push({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitSalePrice: unitPrice,
+          totalPrice: itemTotal
+        })
+
+        totalPrice += itemTotal
+      }
+
+      await AppDataSource.transaction(async transactionalEntityManager => {
+        const order = orderRepository.create({
+          userId: targetUserId,
+          finalPrice: totalPrice,
+          status: OrderStatus.Created
+        })
+
+        const savedOrder = await transactionalEntityManager.save(Order, order)
+
+        for (const orderItem of orderItems) {
+          orderItem.orderId = savedOrder.orderId
+        }
+
+        await transactionalEntityManager.save(OrderItem, orderItems)
+
+        for (const item of input.orderItems) {
+          const product = productMap.get(item.productId)!
+          product.count -= item.quantity
+          await transactionalEntityManager.save(Product, product)
+        }
+      })
+
+      return await orderRepository.findOne({
+        where: { orderId: (await orderRepository.findOne({ where: { userId: targetUserId }, order: { orderId: 'DESC' } }))!.orderId },
+        relations: ['orderItems', 'orderItems.product']
+      })
+    }),
+    updateOrder: requireAuth()(async (_: any, { id, input }: { id: string; input: { status: OrderStatus } }, context: any) => {
+      if (context.user.role !== UserRole.ADMIN) {
+        throw new PermissionError('Only admin can update orders')
+      }
+
+      const orderRepository = AppDataSource.getRepository(Order)
+
+      const order = await orderRepository.findOne({
+        where: { orderId: parseInt(id) },
+        relations: ['orderItems', 'orderItems.product']
+      })
+
+      if (!order) {
+        throw new NotFoundError('Order')
+      }
+
+
+      const currentStatus = order.status as OrderStatus
+      const newStatus = input.status as OrderStatus
+
+      if (currentStatus === OrderStatus.Created) {
+        if (newStatus === OrderStatus.Created) {
+          return order
+        }
+
+        if (newStatus !== OrderStatus.Paid && newStatus !== OrderStatus.Cancelled) {
+          throw new BadRequestError('Created orders can only transition to Paid or Cancelled')
+        }
+      } else {
+        throw new BadRequestError('Order status is final and cannot be changed')
+      }
+
+      order.status = newStatus
+      return await orderRepository.save(order)
+    }),
+    deleteOrder: requireAuth()(async (_: any, { id }: { id: string }, context: any) => {
+      if (context.user.role !== UserRole.ADMIN) {
+        throw new PermissionError('Only admin can delete orders')
+      }
+
+      const orderRepository = AppDataSource.getRepository(Order)
+      const productRepository = AppDataSource.getRepository(Product)
+
+      const order = await orderRepository.findOne({
+        where: { orderId: parseInt(id) },
+        relations: ['orderItems', 'orderItems.product']
+      })
+
+      if (!order) {
+        throw new NotFoundError('Order')
+      }
+
+      if (order.status !== OrderStatus.Created) {
+        throw new BadRequestError('Can only delete orders with status \"Created\"')
+      }
+
+      await AppDataSource.transaction(async transactionalEntityManager => {
+        for (const orderItem of order.orderItems) {
+          const product = orderItem.product
+          product.count += orderItem.quantity
+          await transactionalEntityManager.save(Product, product)
+        }
+
+        await transactionalEntityManager.delete(Order, { orderId: order.orderId })
+      })
+
+      return true
     })
   },
   Order: {
