@@ -2,6 +2,7 @@ import { AppDataSource } from '../../config/database'
 import { User, Permission, UserRole } from '../../entities/User'
 import { Category } from '../../entities/Category'
 import { Product } from '../../entities/Product'
+import { ProductImage } from '../../entities/ProductImage'
 import { Order } from '../../entities/Order'
 import { OrderItem } from '../../entities/OrderItem'
 import { AuthService } from '../../utils/auth/auth'
@@ -95,6 +96,7 @@ export const resolvers = {
       const queryBuilder = productRepository.createQueryBuilder('product')
         .leftJoinAndSelect('product.category', 'category')
         .leftJoinAndSelect('product.orderItems', 'orderItems')
+        .leftJoinAndSelect('product.images', 'images')
 
       // Search filter
       if (params?.search) {
@@ -163,7 +165,7 @@ export const resolvers = {
       const productRepository = AppDataSource.getRepository(Product)
       const product = await productRepository.findOne({
         where: { productId: parseInt(id) },
-        relations: ['category', 'orderItems']
+        relations: ['category', 'orderItems', 'images']
       })
 
       if (!product) return null
@@ -489,6 +491,244 @@ export const resolvers = {
         await transactionalEntityManager.delete(Order, { orderId: order.orderId })
       })
 
+      return true
+    }),
+    createProduct: requirePermission(Permission.MANAGE_PRODUCTS)(async (_: any, { input }: { input: { sku: string; name: string; importPrice: number; count: number; description: string; images: Array<{ url: string; altText?: string; position?: number; isPrimary?: boolean }>; categoryId: number } }) => {
+      const productRepository = AppDataSource.getRepository(Product)
+      const categoryRepository = AppDataSource.getRepository(Category)
+      const productImageRepository = AppDataSource.getRepository(ProductImage)
+
+      if (input.sku.trim().length === 0) {
+        throw new ValidationError('SKU cannot be empty', 'sku')
+      }
+
+      if (input.sku.length > 50) {
+        throw new ValidationError('SKU must be less than 50 characters', 'sku')
+      }
+
+      const existingProduct = await productRepository.findOne({ where: { sku: input.sku } })
+      if (existingProduct) {
+        throw new ValidationError('SKU already exists', 'sku')
+      }
+
+      if (input.name.trim().length === 0) {
+        throw new ValidationError('Product name cannot be empty', 'name')
+      }
+
+      if (input.name.length > 200) {
+        throw new ValidationError('Product name must be less than 200 characters', 'name')
+      }
+
+      if (input.importPrice < 0) {
+        throw new ValidationError('Import price cannot be negative', 'importPrice')
+      }
+
+      if (input.count < 0) {
+        throw new ValidationError('Count cannot be negative', 'count')
+      }
+
+      if (input.description.length > 1000) {
+        throw new ValidationError('Description must be less than 1000 characters', 'description')
+      }
+
+      if (!Array.isArray(input.images) || input.images.length < 3) {
+        throw new ValidationError('At least 3 images are required', 'images')
+      }
+
+      const cleanedImages = input.images.map((img, idx) => {
+        const url = img.url !== undefined && img.url !== null ? String(img.url).trim() : ''
+        const altText = img.altText !== undefined && img.altText !== null ? String(img.altText).trim() : ''
+        const position = img.position !== undefined && img.position !== null ? Number(img.position) : idx
+        const isPrimary = !!img.isPrimary
+        if (url.length === 0) {
+          throw new ValidationError('Image url cannot be empty', 'images')
+        }
+        if (url.length > 1000) {
+          throw new ValidationError('Image url must be less than 1000 characters', 'images')
+        }
+        if (altText.length > 200) {
+          throw new ValidationError('Image altText must be less than 200 characters', 'images')
+        }
+        return { url, altText, position, isPrimary }
+      })
+
+      const category = await categoryRepository.findOne({ where: { categoryId: input.categoryId } })
+      if (!category) {
+        throw new NotFoundError('Category')
+      }
+
+      let primaryCount = cleanedImages.filter(i => i.isPrimary).length
+      if (primaryCount === 0) {
+        cleanedImages[0].isPrimary = true
+      } else if (primaryCount > 1) {
+        throw new ValidationError('Only one image can be primary', 'images')
+      }
+
+      const product = productRepository.create({
+        sku: input.sku.trim(),
+        name: input.name.trim(),
+        importPrice: input.importPrice,
+        count: input.count,
+        description: input.description,
+        categoryId: input.categoryId
+      })
+
+      await AppDataSource.transaction(async transactionalEntityManager => {
+        const savedProduct = await transactionalEntityManager.save(Product, product)
+        const imagesToSave = cleanedImages.map(img => ({
+          productId: savedProduct.productId,
+          url: img.url,
+          altText: img.altText,
+          position: img.position,
+          isPrimary: img.isPrimary
+        }))
+        await transactionalEntityManager.save(ProductImage, imagesToSave)
+      })
+
+      return await productRepository.findOne({
+        where: { sku: input.sku.trim() },
+        relations: ['category', 'orderItems', 'images']
+      })
+    }),
+    updateProduct: requirePermission(Permission.MANAGE_PRODUCTS)(async (_: any, { id, input }: { id: string; input: { sku?: string; name?: string; importPrice?: number; count?: number; description?: string; images?: Array<{ url: string; altText?: string; position?: number; isPrimary?: boolean }>; categoryId?: number } }) => {
+      const productRepository = AppDataSource.getRepository(Product)
+      const categoryRepository = AppDataSource.getRepository(Category)
+      const product = await productRepository.findOne({ where: { productId: parseInt(id) } })
+      if (!product) {
+        throw new NotFoundError('Product')
+      }
+
+      if (input.sku !== undefined) {
+        if (input.sku.trim().length === 0) {
+          throw new ValidationError('SKU cannot be empty', 'sku')
+        }
+
+        if (input.sku.length > 50) {
+          throw new ValidationError('SKU must be less than 50 characters', 'sku')
+        }
+
+        const existingProduct = await productRepository.findOne({
+          where: { sku: input.sku }
+        })
+        if (existingProduct && existingProduct.productId !== product.productId) {
+          throw new ValidationError('SKU already exists', 'sku')
+        }
+        if (existingProduct) {
+          throw new ValidationError('SKU already exists', 'sku')
+        }
+
+        product.sku = input.sku.trim()
+      }
+
+      if (input.name !== undefined) {
+        if (input.name.trim().length === 0) {
+          throw new ValidationError('Product name cannot be empty', 'name')
+        }
+
+        if (input.name.length > 200) {
+          throw new ValidationError('Product name must be less than 200 characters', 'name')
+        }
+
+        product.name = input.name.trim()
+      }
+
+      if (input.importPrice !== undefined) {
+        if (input.importPrice < 0) {
+          throw new ValidationError('Import price cannot be negative', 'importPrice')
+        }
+
+        product.importPrice = input.importPrice
+      }
+
+      if (input.count !== undefined) {
+        if (input.count < 0) {
+          throw new ValidationError('Count cannot be negative', 'count')
+        }
+
+        product.count = input.count
+      }
+
+      if (input.description !== undefined) {
+        if (input.description.length > 1000) {
+          throw new ValidationError('Description must be less than 1000 characters', 'description')
+        }
+
+        product.description = input.description
+      }
+
+      if (input.images !== undefined) {
+        if (!Array.isArray(input.images) || input.images.length < 3) {
+          throw new ValidationError('At least 3 images are required', 'images')
+        }
+
+        const cleanedImages = input.images.map((img, idx) => {
+          const url = img.url !== undefined && img.url !== null ? String(img.url).trim() : ''
+          const altText = img.altText !== undefined && img.altText !== null ? String(img.altText).trim() : ''
+          const position = img.position !== undefined && img.position !== null ? Number(img.position) : idx
+          const isPrimary = !!img.isPrimary
+          if (url.length === 0) {
+            throw new ValidationError('Image url cannot be empty', 'images')
+          }
+          if (url.length > 1000) {
+            throw new ValidationError('Image url must be less than 1000 characters', 'images')
+          }
+          if (altText.length > 200) {
+            throw new ValidationError('Image altText must be less than 200 characters', 'images')
+          }
+          return { url, altText, position, isPrimary }
+        })
+
+        let primaryCount = cleanedImages.filter(i => i.isPrimary).length
+        if (primaryCount === 0) {
+          cleanedImages[0].isPrimary = true
+        } else if (primaryCount > 1) {
+          throw new ValidationError('Only one image can be primary', 'images')
+        }
+
+        await AppDataSource.transaction(async transactionalEntityManager => {
+          product.categoryId = product.categoryId
+          await transactionalEntityManager.save(Product, product)
+          await transactionalEntityManager.delete(ProductImage, { productId: product.productId })
+          const imagesToSave = cleanedImages.map(img => ({
+            productId: product.productId,
+            url: img.url,
+            altText: img.altText,
+            position: img.position,
+            isPrimary: img.isPrimary
+          }))
+          await transactionalEntityManager.save(ProductImage, imagesToSave)
+        })
+        return await productRepository.findOne({ where: { productId: product.productId }, relations: ['category', 'orderItems', 'images'] })
+      }
+
+      if (input.categoryId !== undefined) {
+        const category = await categoryRepository.findOne({ where: { categoryId: input.categoryId } })
+        if (!category) {
+          throw new NotFoundError('Category')
+        }
+
+        product.categoryId = input.categoryId
+      }
+
+      return await productRepository.save(product)
+    }),
+    deleteProduct: requirePermission(Permission.MANAGE_PRODUCTS)(async (_: any, { id }: { id: string }) => {
+      const productRepository = AppDataSource.getRepository(Product)
+
+      const product = await productRepository.findOne({
+        where: { productId: parseInt(id) },
+        relations: ['orderItems']
+      })
+
+      if (!product) {
+        throw new NotFoundError('Product')
+      }
+
+      if (product.orderItems && product.orderItems.length > 0) {
+        throw new BadRequestError('Cannot delete product that has been ordered')
+      }
+
+      await productRepository.remove(product)
       return true
     })
   },

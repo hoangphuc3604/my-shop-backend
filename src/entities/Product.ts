@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm'
 import { Category } from './Category'
 import { OrderItem } from './OrderItem'
+import { ProductImage } from './ProductImage'
 
 @Entity('products')
 export class Product {
@@ -22,15 +23,8 @@ export class Product {
 
   @Column({ length: 1000 })
   description!: string
-
-  @Column({ length: 500 })
-  imageUrl1!: string
-
-  @Column({ length: 500 })
-  imageUrl2!: string
-
-  @Column({ length: 500 })
-  imageUrl3!: string
+  @OneToMany(() => ProductImage, image => image.product, { cascade: true })
+  images!: ProductImage[]
 
   @Column({ type: 'int' })
   categoryId!: number

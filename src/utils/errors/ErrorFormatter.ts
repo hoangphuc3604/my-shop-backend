@@ -27,6 +27,39 @@ export function formatError(error: GraphQLError): FormattedError {
     return formattedError
   }
 
+  const extCode = (error as any).extensions && (error as any).extensions.code
+  if (extCode === 'BAD_USER_INPUT') {
+    const rawMsg = error.message || 'Invalid input'
+    const fieldMatch = rawMsg.match(/Field\s+"([^"]+)"/) || rawMsg.match(/input\.([a-zA-Z0-9_]+)/)
+    const field = fieldMatch ? fieldMatch[1] : undefined
+
+    const friendlyByField: { [key: string]: string } = {
+      images: 'Please provide at least 3 images for the product.',
+      categoryId: 'Please select a category for the product.',
+      sku: 'Please provide a valid SKU.',
+      name: 'Please provide a product name.',
+      importPrice: 'Please provide a valid import price.',
+      count: 'Please provide a valid stock count.'
+    }
+
+    const message = field && friendlyByField[field]
+      ? friendlyByField[field]
+      : 'Invalid input. Please check your data and try again.'
+
+    const formatted: FormattedError = {
+      message,
+      code: ErrorCode.VALIDATION_ERROR,
+      statusCode: 400,
+      timestamp: new Date().toISOString()
+    }
+
+    if (field) {
+      formatted.field = field
+    }
+
+    return formatted
+  }
+
   if (error.message.includes('Authentication required')) {
     return {
       message: 'Authentication required',

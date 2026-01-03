@@ -25,12 +25,18 @@ export const typeDefs = gql`
     importPrice: Int
     count: Int!
     description: String!
-    imageUrl1: String!
-    imageUrl2: String!
-    imageUrl3: String!
+    images: [ProductImage!]!
     categoryId: Int!
     category: Category!
     orderItems: [OrderItem!]!
+  }
+
+  type ProductImage {
+    productImageId: ID!
+    url: String!
+    altText: String
+    position: Int!
+    isPrimary: Boolean!
   }
 
   type Order {
@@ -168,6 +174,33 @@ export const typeDefs = gql`
     status: OrderStatus!
   }
 
+  input CreateProductInput {
+    sku: String!
+    name: String!
+    importPrice: Int!
+    count: Int!
+    description: String!
+    images: [ImageInput!]!
+    categoryId: Int!
+  }
+
+  input UpdateProductInput {
+    sku: String
+    name: String
+    importPrice: Int
+    count: Int
+    description: String
+    images: [ImageInput!]
+    categoryId: Int
+  }
+
+  input ImageInput {
+    url: String!
+    altText: String
+    position: Int
+    isPrimary: Boolean
+  }
+
   type Query {
     hello: String!
     users(params: ListParams): PaginatedUsers!
@@ -187,5 +220,8 @@ export const typeDefs = gql`
     addOrder(input: CreateOrderInput!): Order!
     updateOrder(id: ID!, input: UpdateOrderInput!): Order!
     deleteOrder(id: ID!): Boolean!
+    createProduct(input: CreateProductInput!): Product!
+    updateProduct(id: ID!, input: UpdateProductInput!): Product!
+    deleteProduct(id: ID!): Boolean!
   }
 `

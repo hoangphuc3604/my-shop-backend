@@ -2,6 +2,7 @@ import { AppDataSource } from '../config/database'
 import { User, UserRole } from '../entities/User'
 import { Category } from '../entities/Category'
 import { Product } from '../entities/Product'
+import { ProductImage } from '../entities/ProductImage'
 import { Order } from '../entities/Order'
 import { OrderItem } from '../entities/OrderItem'
 import { AuthService } from './auth/auth'
@@ -11,6 +12,7 @@ export class DatabaseSeeder {
   private userRepository = AppDataSource.getRepository(User)
   private categoryRepository = AppDataSource.getRepository(Category)
   private productRepository = AppDataSource.getRepository(Product)
+  private productImageRepository = AppDataSource.getRepository(ProductImage)
   private orderRepository = AppDataSource.getRepository(Order)
   private orderItemRepository = AppDataSource.getRepository(OrderItem)
 
@@ -87,7 +89,7 @@ export class DatabaseSeeder {
   }
 
   private async seedProducts() {
-    const products: Partial<Product>[] = []
+    const productInfos: Array<{ sku: string; name: string; importPrice: number; count: number; description: string; images: string[]; categoryId: number }> = []
 
     const electronicsProducts = [
       'Wireless Headphones', 'USB-C Cable', 'Phone Stand', 'Portable Charger',
@@ -211,23 +213,19 @@ export class DatabaseSeeder {
       ]
     }
 
-    let productId = 1
     for (let i = 0; i < electronicsProducts.length; i++) {
       const productName = electronicsProducts[i]
       const images = electronicsImages[productName]
       const importPrice = 50000 + (i * 15000)
       const count = 100 - (i * 2)
 
-      products.push({
-        productId: productId++,
+      productInfos.push({
         sku: `ELEC-${String(i + 1).padStart(3, '0')}`,
         name: productName,
         importPrice,
         count,
         description: `High-quality ${productName} for professional and personal use`,
-        imageUrl1: images[0],
-        imageUrl2: images[1],
-        imageUrl3: images[2],
+        images,
         categoryId: 1
       })
     }
@@ -360,16 +358,13 @@ export class DatabaseSeeder {
       const importPrice = 100000 + (i * 12000)
       const count = 200 - (i * 3)
 
-      products.push({
-        productId: productId++,
+      productInfos.push({
         sku: `CLTH-${String(i + 1).padStart(3, '0')}`,
         name: productName,
         importPrice,
         count,
         description: `Premium quality ${productName} made from comfortable and durable materials`,
-        imageUrl1: images[0],
-        imageUrl2: images[1],
-        imageUrl3: images[2],
+        images,
         categoryId: 2
       })
     }
@@ -502,21 +497,45 @@ export class DatabaseSeeder {
       const importPrice = 75000 + (i * 20000)
       const count = 150 - (i * 2)
 
-      products.push({
-        productId: productId++,
+      productInfos.push({
         sku: `HOME-${String(i + 1).padStart(3, '0')}`,
         name: productName,
         importPrice,
         count,
         description: `Quality ${productName} for your home and garden needs`,
-        imageUrl1: images[0],
-        imageUrl2: images[1],
-        imageUrl3: images[2],
+        images,
         categoryId: 3
       })
     }
 
-    await this.productRepository.save(products)
+    const productsToSave = productInfos.map(p => ({
+      sku: p.sku,
+      name: p.name,
+      importPrice: p.importPrice,
+      count: p.count,
+      description: p.description,
+      categoryId: p.categoryId
+    }))
+
+    const savedProducts = await this.productRepository.save(productsToSave)
+
+    const imagesToInsert: Partial<ProductImage>[] = []
+    for (let i = 0; i < savedProducts.length; i++) {
+      const saved = savedProducts[i]
+      const imgs = productInfos[i].images
+      for (let j = 0; j < imgs.length; j++) {
+        imagesToInsert.push({
+          productId: saved.productId,
+          url: imgs[j],
+          altText: '',
+          position: j,
+          isPrimary: j === 0
+        })
+      }
+    }
+    if (imagesToInsert.length > 0) {
+      await this.productImageRepository.save(imagesToInsert)
+    }
   }
 
   private async seedOrders() {
