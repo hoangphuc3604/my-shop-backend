@@ -223,6 +223,7 @@ export const typeDefs = gql`
     order(id: ID!): Order
     me: User
     productTemplate: TemplateFileResult!
+    dashboardStats: DashboardStats!
   }
 
   type BulkUploadResult {
@@ -241,6 +242,61 @@ export const typeDefs = gql`
     fileBase64: String!
     filename: String!
     mimeType: String!
+  }
+
+  type LowStockProduct {
+    productId: ID!
+    sku: String!
+    name: String!
+    count: Int!
+    importPrice: Int
+  }
+
+  type TopSellingProduct {
+    productId: ID!
+    sku: String!
+    name: String!
+    totalSold: Int!
+  }
+
+  type RecentOrder {
+    orderId: ID!
+    createdTime: String!
+    finalPrice: Int!
+    status: OrderStatus!
+    user: UserBasic!
+    orderItems: [OrderItemBasic!]!
+  }
+
+  type UserBasic {
+    username: String!
+  }
+
+  type OrderItemBasic {
+    quantity: Int!
+    unitSalePrice: Float!
+    totalPrice: Int!
+    product: ProductBasic!
+  }
+
+  type ProductBasic {
+    name: String!
+    sku: String!
+  }
+
+  type RevenueChartData {
+    date: String!
+    revenue: Int!
+  }
+
+  type DashboardStats {
+    totalProducts: Int!
+    lowStockProducts: [LowStockProduct!]!
+    topSellingProducts: [TopSellingProduct!]!
+    todayOrdersCount: Int!
+    todayRevenue: Int!
+    recentOrders: [RecentOrder!]!
+    monthlyRevenueChart: [RevenueChartData!]!
   }
 
   type Mutation {
