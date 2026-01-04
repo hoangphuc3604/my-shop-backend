@@ -119,6 +119,21 @@ export const orderMutations = {
       if (newStatus !== OrderStatus.Paid && newStatus !== OrderStatus.Cancelled) {
         throw new BadRequestError(Messages.ORDER_STATUS_INVALID_TRANSITION)
       }
+
+      if (newStatus === OrderStatus.Cancelled) {
+        await AppDataSource.transaction(async transactionalEntityManager => {
+          for (const orderItem of order.orderItems) {
+            const product = orderItem.product
+            product.count += orderItem.quantity
+            await transactionalEntityManager.save(Product, product)
+          }
+
+          order.status = newStatus
+          await transactionalEntityManager.save(Order, order)
+        })
+
+        return order
+      }
     } else {
       throw new BadRequestError(Messages.ORDER_STATUS_FINAL)
     }
