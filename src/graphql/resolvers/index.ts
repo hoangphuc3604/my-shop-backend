@@ -17,7 +17,8 @@ export const resolvers = {
   Mutation: {
     ...authResolvers.Mutation,
     ...productResolvers.Mutation,
-    ...orderResolvers.Mutation
+    ...orderResolvers.Mutation,
+    ...categoryResolvers.Mutation
   },
   // Type resolvers
   Order: {

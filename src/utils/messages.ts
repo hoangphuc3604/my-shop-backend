@@ -27,6 +27,14 @@ export const Messages = {
 
   // Categories
   CATEGORY_NOT_FOUND: 'Category not found',
+  CATEGORY_NAME_EMPTY: 'Category name cannot be empty',
+  CATEGORY_NAME_TOO_LONG: 'Category name must be less than 200 characters',
+  CATEGORY_NAME_EXISTS: 'Category name already exists',
+  CATEGORY_DESCRIPTION_TOO_LONG: 'Category description must be less than 500 characters',
+  CATEGORY_CREATED: 'Category created successfully',
+  CATEGORY_UPDATED: 'Category updated successfully',
+  CATEGORY_DELETED: 'Category deleted successfully',
+  CATEGORY_MANAGE_PERMISSION_DENIED: 'Only admin can manage categories',
 
   // Common validation
   SKU_EMPTY: 'SKU cannot be empty',

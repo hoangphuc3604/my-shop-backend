@@ -194,6 +194,16 @@ export const typeDefs = gql`
     categoryId: Int
   }
 
+  input CreateCategoryInput {
+    name: String!
+    description: String
+  }
+
+  input UpdateCategoryInput {
+    name: String
+    description: String
+  }
+
   input ImageInput {
     url: String!
     altText: String
@@ -243,5 +253,8 @@ export const typeDefs = gql`
     updateProduct(id: ID!, input: UpdateProductInput!): Product!
     deleteProduct(id: ID!): Boolean!
     bulkCreateProducts(fileBase64: String!): BulkUploadResult!
+    createCategory(input: CreateCategoryInput!): Category!
+    updateCategory(id: ID!, input: UpdateCategoryInput!): Category!
+    deleteCategory(id: ID!): Boolean!
   }
 `
