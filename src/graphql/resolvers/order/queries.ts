@@ -4,7 +4,7 @@ import { UserRole, Permission } from '../../../entities/User'
 import { requirePermission } from '../../../middleware/authorization'
 
 export const orderQueries = {
-  orders: requirePermission(Permission.READ_ORDERS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; startDate?: string; endDate?: string } }, context: any) => {
+  orders: requirePermission(Permission.READ_ORDERS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; startDate?: string; endDate?: string; sortBy?: 'FINAL_PRICE' | 'CREATED_TIME'; sortOrder?: 'ASC' | 'DESC' } }, context: any) => {
     const orderRepository = AppDataSource.getRepository(Order)
     const queryBuilder = orderRepository.createQueryBuilder('order')
       .leftJoinAndSelect('order.orderItems', 'orderItems')
@@ -27,6 +27,22 @@ export const orderQueries = {
 
     if (params?.endDate) {
       queryBuilder.andWhere('DATE(order.createdTime) <= :endDate', { endDate: params.endDate })
+    }
+
+    // Sorting
+    const sortFieldMap: { [key: string]: string } = {
+      'FINAL_PRICE': 'finalPrice',
+      'CREATED_TIME': 'createdTime'
+    }
+
+    if (params?.sortBy) {
+      const dbField = sortFieldMap[params.sortBy]
+      if (dbField) {
+        const sortOrder = params.sortOrder === 'ASC' ? 'ASC' : 'DESC'
+        queryBuilder.orderBy(`order.${dbField}`, sortOrder)
+      }
+    } else {
+      queryBuilder.orderBy('order.createdTime', 'DESC')
     }
 
     const page = params?.page || 1

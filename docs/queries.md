@@ -315,16 +315,18 @@ query GetProduct($id: ID!) {
 
 ## orders
 
-**Mô tả**: Lấy danh sách đơn hàng với phân trang và lọc.
+**Mô tả**: Lấy danh sách đơn hàng với phân trang, lọc và sắp xếp.
 
 **Quyền**: `READ_ORDERS`
 
-**Tham số**: `ListParams`
+**Tham số**: `ListParams` (mở rộng với các trường sort cho orders)
 - `search`: String - Tìm kiếm theo trạng thái đơn hàng
 - `page`: Int - Trang hiện tại (mặc định: 1)
 - `limit`: Int - Số items/trang (mặc định: 10)
 - `startDate`: String - Ngày bắt đầu (YYYY-MM-DD)
 - `endDate`: String - Ngày kết thúc (YYYY-MM-DD)
+- `sortBy`: OrderSortBy - Tiêu chí sắp xếp (FINAL_PRICE, CREATED_TIME)
+- `sortOrder`: SortOrder - Thứ tự sắp xếp (ASC, DESC)
 
 **Kiểu trả về**: `PaginatedOrders!`
 
@@ -359,6 +361,18 @@ query GetOrders($params: ListParams) {
       hasNextPage
       hasPrevPage
     }
+  }
+}
+```
+
+**Ví dụ variables (sắp xếp theo tổng tiền giảm dần)**:
+```json
+{
+  "params": {
+    "page": 1,
+    "limit": 10,
+    "sortBy": "FINAL_PRICE",
+    "sortOrder": "DESC"
   }
 }
 ```

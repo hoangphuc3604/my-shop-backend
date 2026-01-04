@@ -50,6 +50,20 @@ enum SortOrder {
 
 ---
 
+### OrderSortBy
+Tiêu chí sắp xếp cho danh sách đơn hàng.
+
+```graphql
+enum OrderSortBy {
+  "Sắp xếp theo tổng giá đơn hàng"
+  FINAL_PRICE
+  "Sắp xếp theo thời gian tạo đơn"
+  CREATED_TIME
+}
+```
+
+---
+
 ## 🎯 Object Types
 
 ### User
@@ -313,6 +327,10 @@ input ListParams {
   startDate: String
   "Date format: YYYY-MM-DD (e.g., 2024-01-15)"
   endDate: String
+  "Tiêu chí sắp xếp (cho orders)"
+  sortBy: OrderSortBy
+  "Thứ tự sắp xếp"
+  sortOrder: SortOrder
 }
 ```
 
@@ -370,6 +388,8 @@ input OrderItemInput {
 |-------|------|----------|------------|
 | productId | Int! | ✅ | ID sản phẩm hợp lệ |
 | quantity | Int! | ✅ | Số lượng > 0 |
+
+ 
 
 ### CreateOrderInput
 Input để tạo đơn hàng mới.

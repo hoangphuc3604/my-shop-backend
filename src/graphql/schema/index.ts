@@ -116,6 +116,13 @@ export const typeDefs = gql`
     DESC
   }
 
+  enum OrderSortBy {
+    "Sắp xếp theo tổng giá đơn hàng"
+    FINAL_PRICE
+    "Sắp xếp theo thời gian tạo đơn"
+    CREATED_TIME
+  }
+
   type AuthResponse {
     success: Boolean!
     token: String
@@ -142,6 +149,10 @@ export const typeDefs = gql`
     startDate: String
     "Date format: YYYY-MM-DD (e.g., 2024-12-31)"
     endDate: String
+    "Tiêu chí sắp xếp (cho orders)"
+    sortBy: OrderSortBy
+    "Thứ tự sắp xếp"
+    sortOrder: SortOrder
   }
 
   input ProductListParams {
@@ -160,6 +171,8 @@ export const typeDefs = gql`
     "Giá tối đa (VNĐ)"
     maxPrice: Int
   }
+
+  # OrderListParams was merged into ListParams for backwards compatibility.
 
   input OrderItemInput {
     productId: Int!

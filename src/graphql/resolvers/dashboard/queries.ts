@@ -149,25 +149,39 @@ export const dashboardQueries = {
         .limit(3)
         .getMany()
 
-      const currentMonth = new Date().getMonth() + 1
-      const currentYear = new Date().getFullYear()
+      const nowGMT7 = new Date(Date.now() + 7 * 60 * 60 * 1000)
+      const currentMonth = nowGMT7.getMonth() + 1
+      const currentYear = nowGMT7.getFullYear()
+
+      logger.info(`Current month calculation - nowGMT7: ${nowGMT7.toISOString()}, currentMonth: ${currentMonth}, currentYear: ${currentYear}`)
 
       const { startMonthUtc, endMonthUtc } = getUtcRangeForLocalMonth(currentYear, currentMonth)
 
-      const monthlyRevenueChart = await orderRepository
+      logger.info(`UTC range for month - startMonthUtc: ${startMonthUtc.toISOString()}, endMonthUtc: ${endMonthUtc.toISOString()}`)
+
+      const rawMonthlyData = await orderRepository
         .createQueryBuilder('order')
         .select([
-          'DATE(order.createdTime) as date',
+          'DATE((order.createdTime AT TIME ZONE \'UTC\') + INTERVAL \'7 hours\') as date',
           'SUM(order.finalPrice) as revenue'
         ])
         .where('order.createdTime >= :startMonthUtc AND order.createdTime < :endMonthUtc', { startMonthUtc, endMonthUtc })
-        .groupBy('DATE(order.createdTime)')
+        .groupBy('DATE((order.createdTime AT TIME ZONE \'UTC\') + INTERVAL \'7 hours\')')
         .orderBy('date', 'ASC')
         .getRawMany()
-        .then(results => results.map((row: any) => ({
-          date: formatDateToYYYYMMDDGMT7(row.date),
+
+      logger.info(`Raw monthly data from DB: ${JSON.stringify(rawMonthlyData)}`)
+
+      const monthlyRevenueChart = rawMonthlyData.map((row: any) => {
+        const formattedDate = formatDateToYYYYMMDDGMT7(row.date)
+        logger.info(`Formatting date - raw date: ${row.date}, formatted: ${formattedDate}, revenue: ${row.revenue}`)
+        return {
+          date: formattedDate,
           revenue: parseInt(row.revenue) || 0
-        })))
+        }
+      })
+
+      logger.info(`Final monthlyRevenueChart: ${JSON.stringify(monthlyRevenueChart)}`)
 
       logger.info('Successfully fetched dashboard stats')
 
