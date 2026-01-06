@@ -224,6 +224,74 @@ export const typeDefs = gql`
     isPrimary: Boolean
   }
 
+  type ProductQuantity {
+    productId: Int!
+    productName: String!
+    quantity: Int!
+  }
+
+  type DailyRevenue {
+    date: String!
+    totalRevenue: Int!
+    orderCount: Int!
+    averageOrderValue: Float!
+    totalQuantity: Int!
+    productQuantities: [ProductQuantity!]!
+  }
+
+  type WeeklyRevenue {
+    weekNumber: Int!
+    year: Int!
+    weekStartDate: String!
+    weekEndDate: String!
+    totalRevenue: Int!
+    orderCount: Int!
+    averageOrderValue: Float!
+    totalQuantity: Int!
+    productQuantities: [ProductQuantity!]!
+  }
+
+  type MonthlyRevenue {
+    month: Int!
+    year: Int!
+    monthName: String!
+    totalRevenue: Int!
+    orderCount: Int!
+    averageOrderValue: Float!
+    totalQuantity: Int!
+    productQuantities: [ProductQuantity!]!
+  }
+
+  type YearlyRevenue {
+    year: Int!
+    totalRevenue: Int!
+    orderCount: Int!
+    averageOrderValue: Float!
+    totalQuantity: Int!
+    productQuantities: [ProductQuantity!]!
+  }
+
+  type ProductRevenue {
+    productId: Int!
+    productName: String!
+    sku: String!
+    totalQuantitySold: Int!
+    totalRevenue: Int!
+    averagePricePerUnit: Float!
+  }
+
+  type RevenueReport {
+    generatedDate: String!
+    totalRevenue: Int!
+    totalOrders: Int!
+    averageOrderValue: Float!
+    dailyRevenues: [DailyRevenue!]!
+    weeklyRevenues: [WeeklyRevenue!]!
+    monthlyRevenues: [MonthlyRevenue!]!
+    yearlyRevenues: [YearlyRevenue!]!
+    productRevenues: [ProductRevenue!]!
+  }
+
   type Query {
     hello: String!
     users(params: ListParams): PaginatedUsers!
@@ -237,6 +305,10 @@ export const typeDefs = gql`
     me: User
     productTemplate: TemplateFileResult!
     dashboardStats: DashboardStats!
+    "Generate revenue report with optional date filtering. Date format: YYYY-MM-DD (e.g., '2024-01-15')"
+    generateRevenueReport(fromDate: String, toDate: String): RevenueReport!
+    "Get product revenue data with optional date filtering. Date format: YYYY-MM-DD (e.g., '2024-01-15')"
+    getProductRevenue(fromDate: String, toDate: String): [ProductRevenue!]!
   }
 
   type BulkUploadResult {

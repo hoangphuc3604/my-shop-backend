@@ -5,6 +5,7 @@ import { categoryResolvers } from './category'
 import { productResolvers } from './product'
 import { orderResolvers } from './order'
 import { dashboardResolvers } from './dashboard'
+import { reportResolvers } from './reports'
 
 export const resolvers = {
   Query: {
@@ -14,7 +15,8 @@ export const resolvers = {
     ...categoryResolvers.Query,
     ...productResolvers.Query,
     ...orderResolvers.Query,
-    ...dashboardResolvers.Query
+    ...dashboardResolvers.Query,
+    ...reportResolvers.Query
   },
   Mutation: {
     ...authResolvers.Mutation,
