@@ -30,6 +30,9 @@ export class Product {
   @Column({ type: 'int' })
   categoryId!: number
 
+  @Column({ type: 'tsvector', select: false, nullable: true })
+  document_with_weights!: any
+
   @ManyToOne(() => Category, category => category.products, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'categoryId' })
   category!: Category
