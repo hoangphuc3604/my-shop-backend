@@ -14,9 +14,32 @@ export const productQueries = {
       .leftJoinAndSelect('product.orderItems', 'orderItems')
       .leftJoinAndSelect('product.images', 'images')
 
-    // Search filter
     if (params?.search) {
-      queryBuilder.where('product.name LIKE :search OR product.sku LIKE :search OR product.description LIKE :search', { search: `%${params.search}%` })
+      const searchTerms = params.search.trim().split(/\s+/).filter(term => term.length > 0)
+      
+      if (searchTerms.length > 0) {
+        // Lower threshold for better fuzzy matches
+        await productRepository.manager.query("SET pg_trgm.word_similarity_threshold = 0.3")
+
+        const tsQuery = searchTerms.map(term => `${term}:*`).join(' & ')
+        
+        queryBuilder
+          .addSelect(`ts_rank(product.document_with_weights, to_tsquery('english', :tsQuery))`, 'rank')
+          .addSelect(`word_similarity(lower(:searchTerm), lower(product.name))`, 'sim')
+          .where(`(
+            product.document_with_weights @@ to_tsquery('english', :tsQuery)
+            OR
+            lower(:searchTerm) <% lower(product.name)
+            OR
+            product.name ILIKE :likeSearch
+          )`, { 
+            tsQuery, 
+            searchTerm: params.search, 
+            likeSearch: `%${params.search}%` 
+          })
+          .orderBy('rank', 'DESC')
+          .addOrderBy('sim', 'DESC')
+      }
     }
 
     // Price range filter

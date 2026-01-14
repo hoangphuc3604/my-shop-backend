@@ -5,6 +5,7 @@ import { typeDefs, resolvers } from './graphql'
 import { logger } from './config/logger'
 import { AppDataSource } from './config/database'
 import { DatabaseSeeder } from './utils/seeder'
+import { configureSearchEngine } from './utils/searchSetup'
 import { AuthService } from './utils/auth/auth'
 import { User } from './entities/User'
 import { ApolloServerPluginLandingPageLocalDefault } from 'apollo-server-core'
@@ -55,6 +56,9 @@ async function startServer() {
   try {
     await AppDataSource.initialize()
     logger.info('Database connection established')
+
+    // Configure Full Text Search and Fuzzy Search
+    await configureSearchEngine()
 
     const seeder = new DatabaseSeeder()
     await seeder.seed()
