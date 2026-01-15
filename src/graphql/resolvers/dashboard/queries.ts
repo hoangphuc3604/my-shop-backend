@@ -48,7 +48,7 @@ interface DashboardStats {
 }
 
 export const dashboardQueries = {
-  dashboardStats: requirePermission(Permission.READ_PRODUCTS)(async (_: any, args: any, context: any): Promise<DashboardStats> => {
+  dashboardStats: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, args: any, context: any): Promise<DashboardStats> => {
     logger.info(`Fetching dashboard stats for user: ${context.user.username}`)
 
     try {

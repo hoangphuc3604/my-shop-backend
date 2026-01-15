@@ -6,6 +6,7 @@ import { productResolvers } from './product'
 import { orderResolvers } from './order'
 import { dashboardResolvers } from './dashboard'
 import { reportResolvers } from './reports'
+import { promotionResolvers } from './promotion'
 
 export const resolvers = {
   Query: {
@@ -16,13 +17,15 @@ export const resolvers = {
     ...productResolvers.Query,
     ...orderResolvers.Query,
     ...dashboardResolvers.Query,
-    ...reportResolvers.Query
+    ...reportResolvers.Query,
+    ...promotionResolvers.Query
   },
   Mutation: {
     ...authResolvers.Mutation,
     ...productResolvers.Mutation,
     ...orderResolvers.Mutation,
-    ...categoryResolvers.Mutation
+    ...categoryResolvers.Mutation,
+    ...promotionResolvers.Mutation
   },
   // Type resolvers
   Order: {

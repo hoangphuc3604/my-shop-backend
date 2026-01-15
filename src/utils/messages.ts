@@ -36,6 +36,24 @@ export const Messages = {
   CATEGORY_DELETED: 'Category deleted successfully',
   CATEGORY_MANAGE_PERMISSION_DENIED: 'Only admin can manage categories',
 
+  // Promotions
+  PROMOTION_NOT_FOUND: 'Promotion not found',
+  PROMOTION_CODE_EXISTS: 'Promotion code already exists',
+  PROMOTION_CODE_INVALID: 'Promotion code must be uppercase letters, numbers, and underscores only',
+  PROMOTION_CODE_TOO_LONG: 'Promotion code cannot exceed 50 characters',
+  PROMOTION_INACTIVE: 'Promotion is not active',
+  PROMOTION_NOT_STARTED: 'Promotion has not started yet',
+  PROMOTION_EXPIRED: 'Promotion has expired',
+  PROMOTION_USAGE_LIMIT_EXCEEDED: 'Promotion usage limit exceeded',
+  PROMOTION_NOT_APPLICABLE: 'Promotion does not apply to any items in your order',
+  PROMOTION_DISCOUNT_INVALID: 'Discount value must be greater than 0',
+  PROMOTION_PERCENTAGE_TOO_HIGH: 'Percentage discount cannot exceed 100%',
+  PROMOTION_APPLIES_TO_IDS_REQUIRED: 'appliesToIds is required when appliesTo is not ALL',
+  PROMOTION_START_AFTER_END: 'Start date must be before end date',
+  PROMOTION_CREATED: 'Promotion created successfully',
+  PROMOTION_UPDATED: 'Promotion updated successfully',
+  PROMOTION_DELETED: 'Promotion deleted successfully',
+
   // Common validation
   SKU_EMPTY: 'SKU cannot be empty',
   SKU_TOO_LONG: 'SKU must be less than 50 characters',

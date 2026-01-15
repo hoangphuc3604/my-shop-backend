@@ -5,6 +5,7 @@ import { Product } from '../entities/Product'
 import { ProductImage } from '../entities/ProductImage'
 import { Order } from '../entities/Order'
 import { OrderItem } from '../entities/OrderItem'
+import { Promotion, PromotionType, AppliesTo } from '../entities/Promotion'
 import { AuthService } from './auth/auth'
 import { IsNull } from 'typeorm'
 
@@ -15,10 +16,13 @@ export class DatabaseSeeder {
   private productImageRepository = AppDataSource.getRepository(ProductImage)
   private orderRepository = AppDataSource.getRepository(Order)
   private orderItemRepository = AppDataSource.getRepository(OrderItem)
+  private promotionRepository = AppDataSource.getRepository(Promotion)
 
   async seed() {
     await this.seedAdminUser()
+    await this.seedSaleUser()
     await this.updateExistingUsers()
+    await this.seedPromotion()
 
     const existingCategories = await this.categoryRepository.count()
     if (existingCategories > 0) {
@@ -71,6 +75,27 @@ export class DatabaseSeeder {
     })
 
     await this.userRepository.save(adminUser)
+  }
+
+  private async seedSaleUser() {
+    const existingSale = await this.userRepository.findOne({
+      where: { username: 'sale' }
+    })
+
+    if (existingSale) {
+      return
+    }
+
+    const hashedPassword = await AuthService.hashPassword('123')
+
+    const saleUser = this.userRepository.create({
+      username: 'sale',
+      email: 'sale@myshop.com',
+      passwordHash: hashedPassword,
+      role: UserRole.SALE
+    })
+
+    await this.userRepository.save(saleUser)
   }
 
   private async updateExistingUsers() {
@@ -538,6 +563,38 @@ export class DatabaseSeeder {
     }
   }
 
+  private async seedPromotion() {
+    const existingPromotion = await this.promotionRepository.findOne({
+      where: { code: 'SALE10' }
+    })
+
+    if (existingPromotion) {
+      return
+    }
+
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - 1)
+
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + 30)
+
+    const promotion = this.promotionRepository.create({
+      code: 'SALE10',
+      description: '10% discount on all products',
+      discountType: PromotionType.PERCENTAGE,
+      discountValue: 10,
+      appliesTo: AppliesTo.ALL,
+      appliesToIds: null,
+      startAt: startDate,
+      endAt: endDate,
+      isActive: true,
+      usageLimit: null,
+      perUserLimit: null
+    })
+
+    await this.promotionRepository.save(promotion)
+  }
+
   private async seedOrders() {
     const orders: Partial<Order>[] = []
     const orderItems: Partial<OrderItem>[] = []
@@ -546,7 +603,8 @@ export class DatabaseSeeder {
 
     let orderItemId = 1
 
-    for (let orderId = 1; orderId <= 10; orderId++) {
+    // Create orders for admin user (userId: 1)
+    for (let orderId = 1; orderId <= 5; orderId++) {
       const createdDate = new Date()
       createdDate.setDate(createdDate.getDate() - (11 - orderId))
       let totalPrice = 0
@@ -581,6 +639,48 @@ export class DatabaseSeeder {
       orders.push({
         orderId,
         userId: 1,
+        createdTime: createdDate,
+        finalPrice: totalPrice,
+        status: statuses[orderId - 1]
+      })
+    }
+
+    // Create orders for sale user (userId: 2)
+    for (let orderId = 6; orderId <= 10; orderId++) {
+      const createdDate = new Date()
+      createdDate.setDate(createdDate.getDate() - (11 - orderId))
+      let totalPrice = 0
+      const itemsPerOrder = (orderId % 3) + 2
+
+      for (let itemIndex = 0; itemIndex < itemsPerOrder; itemIndex++) {
+        const productId = ((orderId + itemIndex) % 66) + 1
+        const quantity = itemIndex + 1
+
+        let unitSalePrice: number
+        if (productId <= 22) {
+          unitSalePrice = (50000 + ((productId - 1) * 15000)) + (quantity * 5000)
+        } else if (productId <= 44) {
+          unitSalePrice = (100000 + ((productId - 23) * 12000)) + (quantity * 8000)
+        } else {
+          unitSalePrice = (75000 + ((productId - 45) * 20000)) + (quantity * 10000)
+        }
+
+        const itemTotal = unitSalePrice * quantity
+        totalPrice += itemTotal
+
+        orderItems.push({
+          orderItemId: orderItemId++,
+          orderId,
+          productId,
+          quantity,
+          unitSalePrice,
+          totalPrice: itemTotal
+        })
+      }
+
+      orders.push({
+        orderId,
+        userId: 2,
         createdTime: createdDate,
         finalPrice: totalPrice,
         status: statuses[orderId - 1]

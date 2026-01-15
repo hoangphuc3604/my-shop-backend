@@ -2,8 +2,10 @@ import { AppDataSource } from '../../../config/database'
 import { Order } from '../../../entities/Order'
 import { OrderItem } from '../../../entities/OrderItem'
 import { Product } from '../../../entities/Product'
+import { Promotion, PromotionType, AppliesTo } from '../../../entities/Promotion'
 import { UserRole } from '../../../entities/User'
-import { requireAuth } from '../../../middleware/authorization'
+import { requireAuth, requirePermission } from '../../../middleware/authorization'
+import { Permission } from '../../../entities/User'
 import { ValidationError, NotFoundError, PermissionError, BadRequestError } from '../../../utils/errors/CustomErrors'
 import { Messages } from '../../../utils/messages'
 
@@ -14,14 +16,12 @@ enum OrderStatus {
 }
 
 export const orderMutations = {
-  addOrder: requireAuth()(async (_: any, { input }: { input: { orderItems: Array<{ productId: number; quantity: number }> } }, context: any) => {
-    if (context.user.role !== UserRole.ADMIN) {
-      throw new PermissionError(Messages.ORDER_PERMISSION_DENIED)
-    }
+  addOrder: requirePermission(Permission.CREATE_ORDERS)(async (_: any, { input }: { input: { orderItems: Array<{ productId: number; quantity: number }>; promotionCode?: string } }, context: any) => {
 
     const orderRepository = AppDataSource.getRepository(Order)
     const orderItemRepository = AppDataSource.getRepository(OrderItem)
     const productRepository = AppDataSource.getRepository(Product)
+    const promotionRepository = AppDataSource.getRepository(Promotion)
 
     const targetUserId = context.user.userId
 
@@ -64,11 +64,74 @@ export const orderMutations = {
       totalPrice += itemTotal
     }
 
+    let appliedPromotionId: number | null = null
+    let appliedPromotionCode: string | null = null
+    let discountAmount = 0
+
+    if (input.promotionCode) {
+      const promotion = await promotionRepository.findOne({
+        where: { code: input.promotionCode.toUpperCase() }
+      })
+
+      if (!promotion) {
+        throw new ValidationError('Promotion code not found', 'promotionCode')
+      }
+
+      if (!promotion.isActive) {
+        throw new ValidationError('Promotion is not active', 'promotionCode')
+      }
+
+      const now = new Date()
+      if (promotion.startAt && now < promotion.startAt) {
+        throw new ValidationError('Promotion has not started yet', 'promotionCode')
+      }
+
+      if (promotion.endAt && now > promotion.endAt) {
+        throw new ValidationError('Promotion has expired', 'promotionCode')
+      }
+
+      if (promotion.usageLimit && promotion.usedCount >= promotion.usageLimit) {
+        throw new ValidationError('Promotion usage limit exceeded', 'promotionCode')
+      }
+
+      const applicableProductIds = new Set(products.map(p => p.productId))
+      const applicableCategoryIds = new Set(products.map(p => p.categoryId))
+
+      let isApplicable = false
+      if (promotion.appliesTo === AppliesTo.ALL) {
+        isApplicable = true
+      } else if (promotion.appliesTo === AppliesTo.PRODUCTS && promotion.appliesToIds) {
+        isApplicable = promotion.appliesToIds.some(id => applicableProductIds.has(id))
+      } else if (promotion.appliesTo === AppliesTo.CATEGORIES && promotion.appliesToIds) {
+        isApplicable = promotion.appliesToIds.some(id => applicableCategoryIds.has(id))
+      }
+
+      if (!isApplicable) {
+        throw new ValidationError('Promotion does not apply to any items in your order', 'promotionCode')
+      }
+
+      if (promotion.discountType === PromotionType.PERCENTAGE) {
+        discountAmount = Math.round(totalPrice * promotion.discountValue / 100)
+      } else {
+        discountAmount = Math.min(promotion.discountValue, totalPrice)
+      }
+
+      const finalPrice = totalPrice - discountAmount
+
+      appliedPromotionId = promotion.promotionId
+      appliedPromotionCode = promotion.code
+    }
+
+    const finalPrice = totalPrice - discountAmount
+
     await AppDataSource.transaction(async transactionalEntityManager => {
       const order = orderRepository.create({
         userId: targetUserId,
-        finalPrice: totalPrice,
-        status: OrderStatus.Created
+        finalPrice: finalPrice,
+        status: OrderStatus.Created,
+        appliedPromotionId,
+        appliedPromotionCode,
+        discountAmount
       })
 
       const savedOrder = await transactionalEntityManager.save(Order, order)
@@ -83,6 +146,16 @@ export const orderMutations = {
         const product = productMap.get(item.productId)!
         product.count -= item.quantity
         await transactionalEntityManager.save(Product, product)
+      }
+
+      if (appliedPromotionId) {
+        const promotion = await transactionalEntityManager.findOne(Promotion, {
+          where: { promotionId: appliedPromotionId }
+        })
+        if (promotion) {
+          promotion.usedCount += 1
+          await transactionalEntityManager.save(Promotion, promotion)
+        }
       }
     })
 

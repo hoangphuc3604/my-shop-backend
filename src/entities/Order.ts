@@ -23,6 +23,15 @@ export class Order {
   @Column({ length: 50, default: 'Created' })
   status!: string
 
+  @Column({ type: 'int', nullable: true })
+  appliedPromotionId!: number | null
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  appliedPromotionCode!: string | null
+
+  @Column({ type: 'int', default: 0 })
+  discountAmount!: number
+
   @OneToMany(() => OrderItem, orderItem => orderItem.order, { cascade: true })
   orderItems!: OrderItem[]
 }

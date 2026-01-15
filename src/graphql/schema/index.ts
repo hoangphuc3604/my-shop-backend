@@ -39,11 +39,41 @@ export const typeDefs = gql`
     isPrimary: Boolean!
   }
 
+  type Promotion {
+    promotionId: ID!
+    code: String!
+    description: String!
+    discountType: PromotionType!
+    discountValue: Int!
+    appliesTo: AppliesTo!
+    appliesToIds: [Int!]
+    startAt: String
+    endAt: String
+    isActive: Boolean!
+    usageLimit: Int
+    usedCount: Int!
+    perUserLimit: Int
+    createdAt: String!
+  }
+
+  enum PromotionType {
+    PERCENTAGE
+    FIXED
+  }
+
+  enum AppliesTo {
+    ALL
+    PRODUCTS
+    CATEGORIES
+  }
+
   type Order {
     orderId: ID!
     createdTime: String!
     finalPrice: Int!
     status: OrderStatus!
+    appliedPromotionCode: String
+    discountAmount: Int!
     orderItems: [OrderItem!]!
   }
 
@@ -84,6 +114,11 @@ export const typeDefs = gql`
 
   type PaginatedOrders {
     items: [Order!]!
+    pagination: PaginationInfo!
+  }
+
+  type PaginatedPromotions {
+    items: [Promotion!]!
     pagination: PaginationInfo!
   }
 
@@ -183,6 +218,7 @@ export const typeDefs = gql`
 
   input CreateOrderInput {
     orderItems: [OrderItemInput!]!
+    promotionCode: String
   }
 
   input UpdateOrderInput {
@@ -224,6 +260,33 @@ export const typeDefs = gql`
     altText: String
     position: Int
     isPrimary: Boolean
+  }
+
+  input CreatePromotionInput {
+    code: String!
+    description: String!
+    discountType: PromotionType!
+    discountValue: Int!
+    appliesTo: AppliesTo!
+    appliesToIds: [Int!]
+    startAt: String
+    endAt: String
+    usageLimit: Int
+    perUserLimit: Int
+  }
+
+  input UpdatePromotionInput {
+    code: String
+    description: String
+    discountType: PromotionType
+    discountValue: Int
+    appliesTo: AppliesTo
+    appliesToIds: [Int!]
+    startAt: String
+    endAt: String
+    isActive: Boolean
+    usageLimit: Int
+    perUserLimit: Int
   }
 
   type ProductQuantity {
@@ -311,6 +374,8 @@ export const typeDefs = gql`
     generateRevenueReport(fromDate: String, toDate: String): RevenueReport!
     "Get product revenue data with optional date filtering. Date format: YYYY-MM-DD (e.g., '2024-01-15')"
     getProductRevenue(fromDate: String, toDate: String): [ProductRevenue!]!
+    promotions(params: ListParams): PaginatedPromotions!
+    promotion(id: ID!): Promotion
   }
 
   type BulkUploadResult {
@@ -399,5 +464,8 @@ export const typeDefs = gql`
     createCategory(input: CreateCategoryInput!): Category!
     updateCategory(id: ID!, input: UpdateCategoryInput!): Category!
     deleteCategory(id: ID!): Boolean!
+    createPromotion(input: CreatePromotionInput!): Promotion!
+    updatePromotion(id: ID!, input: UpdatePromotionInput!): Promotion!
+    deletePromotion(id: ID!): Boolean!
   }
 `

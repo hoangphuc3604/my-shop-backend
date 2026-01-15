@@ -1,9 +1,10 @@
-import { requireAuth } from '../../../middleware/authorization'
+import { requireAuth, requirePermission } from '../../../middleware/authorization'
+import { Permission } from '../../../entities/User'
 import { generateRevenueReport, getProductRevenue } from './queries'
 
 export const reportResolvers = {
   Query: {
-    generateRevenueReport: requireAuth()(generateRevenueReport),
-    getProductRevenue: requireAuth()(getProductRevenue)
+    generateRevenueReport: requirePermission(Permission.MANAGE_SYSTEM)(generateRevenueReport),
+    getProductRevenue: requirePermission(Permission.MANAGE_SYSTEM)(getProductRevenue)
   }
 }
