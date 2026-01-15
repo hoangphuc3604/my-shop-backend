@@ -129,10 +129,8 @@ export const productMutations = {
       const existingProduct = await productRepository.findOne({
         where: { sku: input.sku }
       })
+      // Only throw if SKU exists AND it belongs to a DIFFERENT product
       if (existingProduct && existingProduct.productId !== product.productId) {
-        throw new ValidationError(Messages.SKU_EXISTS, 'sku')
-      }
-      if (existingProduct) {
         throw new ValidationError(Messages.SKU_EXISTS, 'sku')
       }
 
