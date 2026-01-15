@@ -170,6 +170,8 @@ export const typeDefs = gql`
     minPrice: Int
     "Giá tối đa (VNĐ)"
     maxPrice: Int
+    "ID của category để lọc sản phẩm"
+    categoryId: Int
   }
 
   # OrderListParams was merged into ListParams for backwards compatibility.

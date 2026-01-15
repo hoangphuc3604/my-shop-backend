@@ -7,12 +7,17 @@ import { ExcelTemplateGenerator } from '../../../utils/excelTemplate'
 import { logger } from '../../../config/logger'
 
 export const productQueries = {
-  products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; sortBy?: 'NAME' | 'IMPORT_PRICE' | 'COUNT' | 'CREATED_AT' | 'PRODUCT_ID'; sortOrder?: 'ASC' | 'DESC'; minPrice?: number; maxPrice?: number } }, context: any) => {
+  products: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; sortBy?: 'NAME' | 'IMPORT_PRICE' | 'COUNT' | 'CREATED_AT' | 'PRODUCT_ID'; sortOrder?: 'ASC' | 'DESC'; minPrice?: number; maxPrice?: number; categoryId?: number } }, context: any) => {
     const productRepository = AppDataSource.getRepository(Product)
     const queryBuilder = productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.orderItems', 'orderItems')
       .leftJoinAndSelect('product.images', 'images')
+
+    // Category filter
+    if (params?.categoryId !== undefined) {
+      queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId: params.categoryId })
+    }
 
     if (params?.search) {
       const searchTerms = params.search.trim().split(/\s+/).filter(term => term.length > 0)
