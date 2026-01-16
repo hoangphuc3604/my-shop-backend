@@ -90,10 +90,6 @@ export const orderMutations = {
         throw new ValidationError('Promotion has expired', 'promotionCode')
       }
 
-      if (promotion.usageLimit && promotion.usedCount >= promotion.usageLimit) {
-        throw new ValidationError('Promotion usage limit exceeded', 'promotionCode')
-      }
-
       const applicableProductIds = new Set(products.map(p => p.productId))
       const applicableCategoryIds = new Set(products.map(p => p.categoryId))
 
@@ -148,15 +144,6 @@ export const orderMutations = {
         await transactionalEntityManager.save(Product, product)
       }
 
-      if (appliedPromotionId) {
-        const promotion = await transactionalEntityManager.findOne(Promotion, {
-          where: { promotionId: appliedPromotionId }
-        })
-        if (promotion) {
-          promotion.usedCount += 1
-          await transactionalEntityManager.save(Promotion, promotion)
-        }
-      }
     })
 
     return await orderRepository.findOne({

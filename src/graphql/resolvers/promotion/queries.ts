@@ -4,12 +4,29 @@ import { requirePermission } from '../../../middleware/authorization'
 import { Permission } from '../../../entities/User'
 
 export const promotionQueries = {
-  promotions: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number } }) => {
+  promotions: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { params }: { params?: { search?: string; page?: number; limit?: number; isActive?: boolean } }) => {
     const promotionRepository = AppDataSource.getRepository(Promotion)
     const queryBuilder = promotionRepository.createQueryBuilder('promotion')
 
+    let whereConditions = ''
+    const whereParams: any = {}
+
     if (params?.search) {
-      queryBuilder.where('promotion.code LIKE :search OR promotion.description LIKE :search', { search: `%${params.search}%` })
+      whereConditions = 'promotion.code LIKE :search OR promotion.description LIKE :search'
+      whereParams.search = `%${params.search}%`
+    }
+
+    if (params?.isActive !== undefined) {
+      if (whereConditions) {
+        whereConditions += ' AND promotion.isActive = :isActive'
+      } else {
+        whereConditions = 'promotion.isActive = :isActive'
+      }
+      whereParams.isActive = params.isActive
+    }
+
+    if (whereConditions) {
+      queryBuilder.where(whereConditions, whereParams)
     }
 
     queryBuilder.orderBy('promotion.createdAt', 'DESC')
@@ -38,7 +55,7 @@ export const promotionQueries = {
     }
   }),
 
-  promotion: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, { id }: { id: string }) => {
+  promotion: requirePermission(Permission.READ_PRODUCTS)(async (_: any, { id }: { id: string }) => {
     const promotionRepository = AppDataSource.getRepository(Promotion)
     return await promotionRepository.findOneBy({ promotionId: parseInt(id) })
   })

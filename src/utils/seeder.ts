@@ -587,9 +587,7 @@ export class DatabaseSeeder {
       appliesToIds: null,
       startAt: startDate,
       endAt: endDate,
-      isActive: true,
-      usageLimit: null,
-      perUserLimit: null
+      isActive: true
     })
 
     await this.promotionRepository.save(promotion)

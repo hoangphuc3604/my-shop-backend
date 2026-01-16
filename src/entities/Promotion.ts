@@ -19,8 +19,8 @@ export class Promotion {
   @Column({ length: 50, unique: true })
   code!: string
 
-  @Column({ type: 'text' })
-  description!: string
+  @Column({ type: 'text', nullable: true })
+  description!: string | null
 
   @Column({
     type: 'enum',
@@ -50,15 +50,6 @@ export class Promotion {
 
   @Column({ type: 'boolean', default: true })
   isActive!: boolean
-
-  @Column({ type: 'int', nullable: true })
-  usageLimit!: number | null
-
-  @Column({ type: 'int', default: 0 })
-  usedCount!: number
-
-  @Column({ type: 'int', nullable: true })
-  perUserLimit!: number | null
 
   @CreateDateColumn()
   createdAt!: Date

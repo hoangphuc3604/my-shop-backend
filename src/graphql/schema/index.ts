@@ -42,7 +42,7 @@ export const typeDefs = gql`
   type Promotion {
     promotionId: ID!
     code: String!
-    description: String!
+    description: String
     discountType: PromotionType!
     discountValue: Int!
     appliesTo: AppliesTo!
@@ -50,9 +50,6 @@ export const typeDefs = gql`
     startAt: String
     endAt: String
     isActive: Boolean!
-    usageLimit: Int
-    usedCount: Int!
-    perUserLimit: Int
     createdAt: String!
   }
 
@@ -188,6 +185,8 @@ export const typeDefs = gql`
     sortBy: OrderSortBy
     "Thứ tự sắp xếp"
     sortOrder: SortOrder
+    "Lọc theo trạng thái hoạt động (cho promotions)"
+    isActive: Boolean
   }
 
   input ProductListParams {
@@ -264,15 +263,13 @@ export const typeDefs = gql`
 
   input CreatePromotionInput {
     code: String!
-    description: String!
+    description: String
     discountType: PromotionType!
     discountValue: Int!
     appliesTo: AppliesTo!
     appliesToIds: [Int!]
     startAt: String
     endAt: String
-    usageLimit: Int
-    perUserLimit: Int
   }
 
   input UpdatePromotionInput {
@@ -285,8 +282,6 @@ export const typeDefs = gql`
     startAt: String
     endAt: String
     isActive: Boolean
-    usageLimit: Int
-    perUserLimit: Int
   }
 
   type ProductQuantity {

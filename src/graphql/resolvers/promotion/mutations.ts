@@ -6,7 +6,7 @@ import { ValidationError, NotFoundError, BadRequestError } from '../../../utils/
 import { Messages } from '../../../utils/messages'
 
 export const promotionMutations = {
-  createPromotion: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, { input }: { input: { code: string; description: string; discountType: PromotionType; discountValue: number; appliesTo: AppliesTo; appliesToIds?: number[]; startAt?: string; endAt?: string; usageLimit?: number; perUserLimit?: number } }) => {
+  createPromotion: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, { input }: { input: { code: string; description?: string; discountType: PromotionType; discountValue: number; appliesTo: AppliesTo; appliesToIds?: number[]; startAt?: string; endAt?: string } }) => {
     const promotionRepository = AppDataSource.getRepository(Promotion)
 
     if (input.code.trim().length === 0) {
@@ -48,21 +48,19 @@ export const promotionMutations = {
 
     const promotion = promotionRepository.create({
       code: input.code.toUpperCase(),
-      description: input.description,
+      description: input.description || null,
       discountType: input.discountType,
       discountValue: input.discountValue,
       appliesTo: input.appliesTo,
       appliesToIds: input.appliesToIds || null,
       startAt: input.startAt ? new Date(input.startAt) : null,
-      endAt: input.endAt ? new Date(input.endAt) : null,
-      usageLimit: input.usageLimit || null,
-      perUserLimit: input.perUserLimit || null
+      endAt: input.endAt ? new Date(input.endAt) : null
     })
 
     return await promotionRepository.save(promotion)
   }),
 
-  updatePromotion: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, { id, input }: { id: string; input: { code?: string; description?: string; discountType?: PromotionType; discountValue?: number; appliesTo?: AppliesTo; appliesToIds?: number[]; startAt?: string; endAt?: string; isActive?: boolean; usageLimit?: number; perUserLimit?: number } }) => {
+  updatePromotion: requirePermission(Permission.MANAGE_SYSTEM)(async (_: any, { id, input }: { id: string; input: { code?: string; description?: string; discountType?: PromotionType; discountValue?: number; appliesTo?: AppliesTo; appliesToIds?: number[]; startAt?: string; endAt?: string; isActive?: boolean } }) => {
     const promotionRepository = AppDataSource.getRepository(Promotion)
     const promotion = await promotionRepository.findOneBy({ promotionId: parseInt(id) })
 
@@ -84,9 +82,9 @@ export const promotionMutations = {
       }
 
       const existingPromotion = await promotionRepository.findOne({
-        where: { code: input.code, promotionId: promotion.promotionId }
+        where: { code: input.code }
       })
-      if (existingPromotion) {
+      if (existingPromotion && existingPromotion.promotionId !== promotion.promotionId) {
         throw new ValidationError('Promotion code already exists', 'code')
       }
 
@@ -142,14 +140,6 @@ export const promotionMutations = {
 
     if (input.isActive !== undefined) {
       promotion.isActive = input.isActive
-    }
-
-    if (input.usageLimit !== undefined) {
-      promotion.usageLimit = input.usageLimit
-    }
-
-    if (input.perUserLimit !== undefined) {
-      promotion.perUserLimit = input.perUserLimit
     }
 
     return await promotionRepository.save(promotion)
