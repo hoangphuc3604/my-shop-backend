@@ -222,6 +222,7 @@ export const typeDefs = gql`
 
   input UpdateOrderInput {
     status: OrderStatus!
+    promotionCode: String
   }
 
   input CreateProductInput {

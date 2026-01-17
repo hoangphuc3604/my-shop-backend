@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm'
 import { OrderItem } from './OrderItem'
 import { User } from './User'
+import { Promotion } from './Promotion'
 
 @Entity('orders')
 export class Order {
@@ -25,6 +26,10 @@ export class Order {
 
   @Column({ type: 'int', nullable: true })
   appliedPromotionId!: number | null
+
+  @ManyToOne(() => Promotion, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'appliedPromotionId' })
+  appliedPromotion!: Promotion | null
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   appliedPromotionCode!: string | null

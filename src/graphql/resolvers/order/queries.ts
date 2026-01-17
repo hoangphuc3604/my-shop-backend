@@ -9,6 +9,7 @@ export const orderQueries = {
     const queryBuilder = orderRepository.createQueryBuilder('order')
       .leftJoinAndSelect('order.orderItems', 'orderItems')
       .leftJoinAndSelect('orderItems.product', 'product')
+      .leftJoinAndSelect('order.appliedPromotion', 'appliedPromotion')
 
     if (context.user.role !== UserRole.ADMIN) {
       queryBuilder.where('order.userId = :userId', { userId: context.user.userId })
@@ -74,7 +75,7 @@ export const orderQueries = {
     if (context.user.role === UserRole.ADMIN) {
       return await orderRepository.findOne({
         where: { orderId: parseInt(id) },
-        relations: ['orderItems', 'orderItems.product']
+        relations: ['orderItems', 'orderItems.product', 'appliedPromotion']
       })
     } else {
       return await orderRepository.findOne({
@@ -82,7 +83,7 @@ export const orderQueries = {
           orderId: parseInt(id),
           userId: context.user.userId
         },
-        relations: ['orderItems', 'orderItems.product']
+        relations: ['orderItems', 'orderItems.product', 'appliedPromotion']
       })
     }
   })

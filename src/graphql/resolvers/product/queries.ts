@@ -86,12 +86,7 @@ export const productQueries = {
 
     const totalPages = Math.ceil(totalCount / limit)
 
-    const processedItems = context.user.role === UserRole.ADMIN
-      ? items
-      : items.map(product => ({
-          ...product,
-          importPrice: null
-        }))
+    const processedItems = items
 
     return {
       items: processedItems,
@@ -114,14 +109,7 @@ export const productQueries = {
 
     if (!product) return null
 
-    if (context.user.role === UserRole.ADMIN) {
-      return product
-    } else {
-      return {
-        ...product,
-        importPrice: null
-      }
-    }
+    return product
   }),
 
   /**
