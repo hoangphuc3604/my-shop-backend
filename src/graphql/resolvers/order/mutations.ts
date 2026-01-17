@@ -172,59 +172,60 @@ export const orderMutations = {
     const currentStatus = order.status as OrderStatus
     const newStatus = input.status as OrderStatus
 
+    // Handle promotion update first, if provided
+    if (input.promotionCode !== undefined && currentStatus === OrderStatus.Created) {
+      let discountAmount = 0
+      if (input.promotionCode) {
+        const promotion = await promotionRepository.findOne({ where: { code: input.promotionCode.toUpperCase() } })
+        if (!promotion) {
+          throw new ValidationError('Promotion code not found', 'promotionCode')
+        }
+        if (!promotion.isActive) {
+          throw new ValidationError('Promotion is not active', 'promotionCode')
+        }
+        const now = new Date()
+        if (promotion.startAt && now < promotion.startAt) {
+          throw new ValidationError('Promotion has not started yet', 'promotionCode')
+        }
+        if (promotion.endAt && now > promotion.endAt) {
+          throw new ValidationError('Promotion has expired', 'promotionCode')
+        }
+        const applicableProductIds = new Set(order.orderItems.map(oi => oi.product.productId))
+        const applicableCategoryIds = new Set(order.orderItems.map(oi => oi.product.categoryId))
+        let isApplicable = false
+        if (promotion.appliesTo === AppliesTo.ALL) {
+          isApplicable = true
+        } else if (promotion.appliesTo === AppliesTo.PRODUCTS && promotion.appliesToIds) {
+          isApplicable = promotion.appliesToIds.some(id => applicableProductIds.has(id))
+        } else if (promotion.appliesTo === AppliesTo.CATEGORIES && promotion.appliesToIds) {
+          isApplicable = promotion.appliesToIds.some(id => applicableCategoryIds.has(id))
+        }
+        if (!isApplicable) {
+          throw new ValidationError('Promotion does not apply to any items in this order', 'promotionCode')
+        }
+        const totalPrice = order.orderItems.reduce((sum, oi) => sum + oi.totalPrice, 0)
+        if (promotion.discountType === PromotionType.PERCENTAGE) {
+          discountAmount = Math.round(totalPrice * promotion.discountValue / 100)
+        } else {
+          discountAmount = Math.min(promotion.discountValue, totalPrice)
+        }
+        order.appliedPromotionId = promotion.promotionId
+        order.appliedPromotionCode = promotion.code
+        order.discountAmount = discountAmount
+        order.finalPrice = totalPrice - discountAmount
+      } else {
+        // clear promotion
+        const totalPrice = order.orderItems.reduce((sum, oi) => sum + oi.totalPrice, 0)
+        order.appliedPromotionId = null
+        order.appliedPromotionCode = null
+        order.discountAmount = 0
+        order.finalPrice = totalPrice
+      }
+      await orderRepository.save(order)
+    }
+
     if (currentStatus === OrderStatus.Created) {
       if (newStatus === OrderStatus.Created) {
-        // allow promotion edit when status remains Created
-        if (input.promotionCode !== undefined) {
-          let discountAmount = 0
-          if (input.promotionCode) {
-            const promotion = await promotionRepository.findOne({ where: { code: input.promotionCode.toUpperCase() } })
-            if (!promotion) {
-              throw new ValidationError('Promotion code not found', 'promotionCode')
-            }
-            if (!promotion.isActive) {
-              throw new ValidationError('Promotion is not active', 'promotionCode')
-            }
-            const now = new Date()
-            if (promotion.startAt && now < promotion.startAt) {
-              throw new ValidationError('Promotion has not started yet', 'promotionCode')
-            }
-            if (promotion.endAt && now > promotion.endAt) {
-              throw new ValidationError('Promotion has expired', 'promotionCode')
-            }
-            const applicableProductIds = new Set(order.orderItems.map(oi => oi.product.productId))
-            const applicableCategoryIds = new Set(order.orderItems.map(oi => oi.product.categoryId))
-            let isApplicable = false
-            if (promotion.appliesTo === AppliesTo.ALL) {
-              isApplicable = true
-            } else if (promotion.appliesTo === AppliesTo.PRODUCTS && promotion.appliesToIds) {
-              isApplicable = promotion.appliesToIds.some(id => applicableProductIds.has(id))
-            } else if (promotion.appliesTo === AppliesTo.CATEGORIES && promotion.appliesToIds) {
-              isApplicable = promotion.appliesToIds.some(id => applicableCategoryIds.has(id))
-            }
-            if (!isApplicable) {
-              throw new ValidationError('Promotion does not apply to any items in this order', 'promotionCode')
-            }
-            const totalPrice = order.orderItems.reduce((sum, oi) => sum + oi.totalPrice, 0)
-            if (promotion.discountType === PromotionType.PERCENTAGE) {
-              discountAmount = Math.round(totalPrice * promotion.discountValue / 100)
-            } else {
-              discountAmount = Math.min(promotion.discountValue, totalPrice)
-            }
-            order.appliedPromotionId = promotion.promotionId
-            order.appliedPromotionCode = promotion.code
-            order.discountAmount = discountAmount
-            order.finalPrice = totalPrice - discountAmount
-          } else {
-            // clear promotion
-            const totalPrice = order.orderItems.reduce((sum, oi) => sum + oi.totalPrice, 0)
-            order.appliedPromotionId = null
-            order.appliedPromotionCode = null
-            order.discountAmount = 0
-            order.finalPrice = totalPrice
-          }
-          await orderRepository.save(order)
-        }
         return order
       }
 
