@@ -119,6 +119,7 @@ export const dashboardQueries = {
           'SUM(order.finalPrice) as totalRevenue'
         ])
         .where('order.createdTime >= :startUtc AND order.createdTime < :endUtc', { startUtc, endUtc })
+        .andWhere('order.status = :status', { status: 'Paid' })
         .getRawOne()
 
       const ordersCountKey = Object.keys(todayStats || {}).find(k => /count/i.test(k)) || 'ordersCount'
@@ -166,6 +167,7 @@ export const dashboardQueries = {
           'SUM(order.finalPrice) as revenue'
         ])
         .where('order.createdTime >= :startMonthUtc AND order.createdTime < :endMonthUtc', { startMonthUtc, endMonthUtc })
+        .andWhere('order.status = :status', { status: 'Paid' })
         .groupBy('DATE((order.createdTime AT TIME ZONE \'UTC\') + INTERVAL \'7 hours\')')
         .orderBy('date', 'ASC')
         .getRawMany()

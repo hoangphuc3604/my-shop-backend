@@ -35,7 +35,7 @@ export const formatDateToYYYYMMDDGMT7 = (date: Date | string): string => {
 export const getUtcRangeForLocalDay = (localDate?: Date) => {
   const now = localDate ? new Date(localDate) : new Date()
   const localNow = new Date(now.getTime() + GMT_OFFSET_MS)
-  const localStartOfDay = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate(), 0, 0, 0, 0)
+  const localStartOfDay = new Date(Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate(), 0, 0, 0, 0))
   const startUtc = new Date(localStartOfDay.getTime() - GMT_OFFSET_MS)
   const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000)
   return { startUtc, endUtc }
