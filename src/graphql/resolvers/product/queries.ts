@@ -24,7 +24,7 @@ export const productQueries = {
       
       if (searchTerms.length > 0) {
         // Lower threshold for better fuzzy matches
-        await productRepository.manager.query("SET pg_trgm.word_similarity_threshold = 0.3")
+        await productRepository.manager.query("SET pg_trgm.word_similarity_threshold = 0.7")
 
         const tsQuery = searchTerms.map(term => `${term}:*`).join(' & ')
         
